@@ -15,9 +15,9 @@ _aufs=20181217
 _bfq=v9
 _bfqdate=20181212
 _sub=0
-_rc=rc3
-_commit=e21a712a9685488f5ce80495b37b9fdbe96c230d
-_shortcommit=${_rc}.d0804.g${_commit:0:7}
+_rc=rc4
+_commit=d45331b00ddb179e291766617259261c112db872
+_shortcommit=${_rc}.d0811.g${_commit:0:7}
 pkgver=${_basekernel}${_shortcommit}
 #pkgver=${_basekernel}.${_sub}
 pkgrel=1
@@ -64,15 +64,13 @@ source=(#"https://www.kernel.org/pub/linux/kernel/v5.x/linux-${_basekernel}.tar.
         '0011-bootsplash.patch'
         '0012-bootsplash.patch'
         '0013-bootsplash.patch')
-sha256sums=('42795ac48d9ca00bd32d662a17a24a1c480d5e51d1523ffe8fba22ea5b1dc3e4'
+sha256sums=('b3d402e52f5ea256714737291597e373e297966e7c5b3f394558fa4f904da70b'
             '7099afc84f696586b1fd95a249cb223da43d911339d1941588c13fb92fe4a10b'
             'f5903377d29fc538af98077b81982efdc091a8c628cb85566e88e1b5018f12bf'
             '43942683a7ff01b180dff7f3de2db4885d43ab3d4e7bd0e1918c3aaf2ee061f4'
             'ae2e95db94ef7176207c690224169594d49445e04249d2499e9d2fbc117a0b21'
             '90831589b7ab43d6fab11bfa3ad788db14ba77ea4dc03d10ee29ad07194691e1'
             '37b86ca3de148a34258e3176dbf41488d9dbd19e93adbd22a062b3c41332ce85'
-            'd00545db36a5af56982ce694cf1bc51e2a8bb2d4471960bce982f5d257b708b7'
-            '35ab7878bfc45367473b861dc460c3efc863778cf295de4aeddf9c8855e3e86e'
             'a504f6cf84094e08eaa3cc5b28440261797bf4f06f04993ee46a20628ff2b53c'
             'e096b127a5208f56d368d2cb938933454d7200d70c86b763aa22c38e0ddb8717'
             '8c1c880f2caa9c7ae43281a35410203887ea8eae750fe8d360d0c8bf80fcc6e0'
