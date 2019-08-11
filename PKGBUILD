@@ -48,6 +48,8 @@ source=(#"https://www.kernel.org/pub/linux/kernel/v5.x/linux-${_basekernel}.tar.
         # ARCH Patches
         0001-add-sysctl-to-disallow-unprivileged-CLONE_NEWUSER-by.patch
         # MANJARO Patches
+        #0001-revert-47801c9-for-zfs.patch::https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/patch/?id=47801c97deb71b9e279c15a02a44cf00aa11e7d9
+        #0002-revert-a721588-for-zfs.patch::https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/patch/?id=a721588d9475cbbf9e8b3ae1a69b1dea88d01653
         # Bootsplash
         '0001-bootsplash.patch'
         '0002-bootsplash.patch'
@@ -69,6 +71,8 @@ sha256sums=('cdc371c88bc4f1b156744070be1288885b56199338167b6a526015d49629ae95'
             'ae2e95db94ef7176207c690224169594d49445e04249d2499e9d2fbc117a0b21'
             '90831589b7ab43d6fab11bfa3ad788db14ba77ea4dc03d10ee29ad07194691e1'
             '37b86ca3de148a34258e3176dbf41488d9dbd19e93adbd22a062b3c41332ce85'
+            'd00545db36a5af56982ce694cf1bc51e2a8bb2d4471960bce982f5d257b708b7'
+            '35ab7878bfc45367473b861dc460c3efc863778cf295de4aeddf9c8855e3e86e'
             'a504f6cf84094e08eaa3cc5b28440261797bf4f06f04993ee46a20628ff2b53c'
             'e096b127a5208f56d368d2cb938933454d7200d70c86b763aa22c38e0ddb8717'
             '8c1c880f2caa9c7ae43281a35410203887ea8eae750fe8d360d0c8bf80fcc6e0'
@@ -97,6 +101,10 @@ prepare() {
 
   # disable USER_NS for non-root users by default
   patch -Np1 -i ../0001-add-sysctl-to-disallow-unprivileged-CLONE_NEWUSER-by.patch
+
+  # https://github.com/zfsonlinux/zfs/issues/9133
+  #patch -Rp1 -i ../0001-revert-47801c9-for-zfs.patch
+  #patch -Rp1 -i ../0002-revert-a721588-for-zfs.patch
 
   # Add bootsplash - http://lkml.iu.edu/hypermail/linux/kernel/1710.3/01542.html
   patch -Np1 -i "${srcdir}/0001-bootsplash.patch"
