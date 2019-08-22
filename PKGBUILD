@@ -48,8 +48,11 @@ source=(#"https://www.kernel.org/pub/linux/kernel/v5.x/linux-${_basekernel}.tar.
         # ARCH Patches
         0001-add-sysctl-to-disallow-unprivileged-CLONE_NEWUSER-by.patch
         # MANJARO Patches
-        #0001-revert-47801c9-for-zfs.patch::https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/patch/?id=47801c97deb71b9e279c15a02a44cf00aa11e7d9
-        #0002-revert-a721588-for-zfs.patch::https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/patch/?id=a721588d9475cbbf9e8b3ae1a69b1dea88d01653
+        '0001-apparmor-patch-to-provide-compatibility-with-v2-net-rules.patch::https://gitlab.com/apparmor/apparmor-kernel/commit/6408dbde30855bb9a2af44c9053ba2329db57c7f.patch'
+        '0002-apparmor-af_unix mediation.patch::https://gitlab.com/apparmor/apparmor-kernel/commit/7a291673471aa583694ee760aa33e5a3f5ae9a9e.patch'
+        '0003-apparmor-fix-use-after-free-in-sk_peer_label.patch::https://gitlab.com/apparmor/apparmor-kernel/commit/9ae046ed7b54b01078e33227fa266282c41f981d.patch'
+        '0004-apparmor-fix-apparmor-mediating-locking-non-fs-unix-sockets.patch::https://gitlab.com/apparmor/apparmor-kernel/commit/b6a5dfbaa728854457570bf72b693a89550cc1f8.patch'
+        '0001-amd_nb-add-pci-device-ids-for-family-17h-model-70h.patch::https://git.kernel.org/pub/scm/linux/kernel/git/next/linux-next.git/patch/?id=3fd670c3ff9528dc5cc903cb3dad8e2cd4650095'
         # Bootsplash
         '0001-bootsplash.patch'
         '0002-bootsplash.patch'
@@ -71,6 +74,11 @@ sha256sums=('1aa1a07dc4df6cbb40bb872eafb6517196330dbd77a088fb1edd577c8b057c23'
             'ae2e95db94ef7176207c690224169594d49445e04249d2499e9d2fbc117a0b21'
             '90831589b7ab43d6fab11bfa3ad788db14ba77ea4dc03d10ee29ad07194691e1'
             '37b86ca3de148a34258e3176dbf41488d9dbd19e93adbd22a062b3c41332ce85'
+            '4b4146786e68af3bd49e9fabdbc92232e51cb2da179ba8037287b96d8addd17c'
+            'c2cff4d3b04dde98bafc67e1a898fa8628f3bacba08531ce473edc43ddcccff'
+            '749ac28edc2cd2ac3a4406becc13327a1ece3445196ca41cbfca460454fa01bf'
+            'e55e88fe22256f079f5ac7b015c2d510912cae6f48a27a0f768b8f5f6acfc11b'
+            '4690504af84e8c493132e8b7b1be57a0a0f940c420b05c14d4a17aef0ccbc16a'
             'a504f6cf84094e08eaa3cc5b28440261797bf4f06f04993ee46a20628ff2b53c'
             'e096b127a5208f56d368d2cb938933454d7200d70c86b763aa22c38e0ddb8717'
             '8c1c880f2caa9c7ae43281a35410203887ea8eae750fe8d360d0c8bf80fcc6e0'
@@ -100,9 +108,16 @@ prepare() {
   # disable USER_NS for non-root users by default
   patch -Np1 -i ../0001-add-sysctl-to-disallow-unprivileged-CLONE_NEWUSER-by.patch
 
-  # https://github.com/zfsonlinux/zfs/issues/9133
-  #patch -Rp1 -i ../0001-revert-47801c9-for-zfs.patch
-  #patch -Rp1 -i ../0002-revert-a721588-for-zfs.patch
+  # add patches for snapd
+  # https://gitlab.com/apparmor/apparmor-kernel/tree/5.2-outoftree
+  patch -Np1 -i "${srcdir}/0001-apparmor-patch-to-provide-compatibility-with-v2-net-rules.patch"
+  patch -Np1 -i "${srcdir}/0002-apparmor-af_unix mediation.patch"
+  patch -Np1 -i "${srcdir}/0003-apparmor-fix-use-after-free-in-sk_peer_label.patch"
+  patch -Np1 -i "${srcdir}/0004-apparmor-fix-apparmor-mediating-locking-non-fs-unix-sockets.patch"
+
+  # add PCI device IDs for family 17h, model 70h
+  # https://forum.manjaro.org/t/99703
+  patch -Np1 -i "${srcdir}/0001-amd_nb-add-pci-device-ids-for-family-17h-model-70h.patch"
 
   # Add bootsplash - http://lkml.iu.edu/hypermail/linux/kernel/1710.3/01542.html
   patch -Np1 -i "${srcdir}/0001-bootsplash.patch"
