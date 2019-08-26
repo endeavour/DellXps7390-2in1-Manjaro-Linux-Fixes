@@ -11,13 +11,11 @@ pkgname=('linux53' 'linux53-headers')
 _kernelname=-MANJARO
 _basekernel=5.3
 _basever=53
-_aufs=20181217
-_bfq=v9
-_bfqdate=20181212
+_aufs=20190812
 _sub=0
-_rc=rc5
-_commit=d1abaeb3be7b5fa6d7a1fbbd2e14e3310005c4c1
-_shortcommit=${_rc}.d0818.g${_commit:0:7}
+_rc=rc6
+_commit=a55aa89aab90fae7c815b0551b07be37db359d76
+_shortcommit=${_rc}.d0826.g${_commit:0:7}
 pkgver=${_basekernel}${_shortcommit}
 #pkgver=${_basekernel}.${_sub}
 pkgrel=1
@@ -31,20 +29,18 @@ source=(#"https://www.kernel.org/pub/linux/kernel/v5.x/linux-${_basekernel}.tar.
         #https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux-stable-rc.git/snapshot/linux-stable-rc-$_commit.tar.gz
         "linux-${pkgver}.tar.gz::https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/snapshot/linux-$_commit.tar.gz"
         # the main kernel config files
-        'config.x86_64' 'config' #'config.aufs'
+        'config.x86_64' 'config' 'config.aufs'
         "${pkgbase}.preset" # standard config files for mkinitcpio ramdisk
         '60-linux.hook'     # pacman hook for depmod
         '90-linux.hook'     # pacman hook for initramfs regeneration
-        #"aufs4.x-rcN-${_aufs}.patch.bz2"
-        #'aufs4-base.patch'
-        #'aufs4-kbuild.patch'
-        #'aufs4-loopback.patch'
-        #'aufs4-mmap.patch'
-        #'aufs4-standalone.patch'
-        #'tmpfs-idr.patch'
-        #'vfs-ino.patch'
-        #"0001-BFQ-${_bfq}-${_bfqdate}.patch::https://github.com/Algodev-github/bfq-mq/compare/0adb328...698937e.patch"
-        #0001-BFQ-${_bfq}-${_bfqdate}.patch::https://github.com/sirlucjan/kernel-patches/raw/master/4.19/bfq-sq-mq/4.19-bfq-sq-mq-v9r1-2K181212-rc1.patch
+        "aufs5.x-rcN-${_aufs}.patch"
+        'aufs5-base.patch'
+        'aufs5-kbuild.patch'
+        'aufs5-loopback.patch'
+        'aufs5-mmap.patch'
+        'aufs5-standalone.patch'
+        'tmpfs-idr.patch'
+        'vfs-ino.patch'
         # ARCH Patches
         0001-add-sysctl-to-disallow-unprivileged-CLONE_NEWUSER-by.patch
         # MANJARO Patches
@@ -67,15 +63,24 @@ source=(#"https://www.kernel.org/pub/linux/kernel/v5.x/linux-${_basekernel}.tar.
         '0011-bootsplash.patch'
         '0012-bootsplash.patch'
         '0013-bootsplash.patch')
-sha256sums=('1aa1a07dc4df6cbb40bb872eafb6517196330dbd77a088fb1edd577c8b057c23'
+sha256sums=('75dc42470f1d72db71ab03f16cca05d4192c0abdbf960aa4587e2005d992adec'
             '9c8da91622ecd7cf10219bfbe38006931a644a96f41d7ec3ba2647ddea1e6f02'
             'f5903377d29fc538af98077b81982efdc091a8c628cb85566e88e1b5018f12bf'
+            'b44d81446d8b53d5637287c30ae3eb64cae0078c3fbc45fcf1081dd6699818b5'
             '43942683a7ff01b180dff7f3de2db4885d43ab3d4e7bd0e1918c3aaf2ee061f4'
             'ae2e95db94ef7176207c690224169594d49445e04249d2499e9d2fbc117a0b21'
             '90831589b7ab43d6fab11bfa3ad788db14ba77ea4dc03d10ee29ad07194691e1'
+            '14f1c0e9adfd8e9e9e4601d0d76adf186d52855eae91eee83c9f1aa449808799'
+            '29bb58757da5a4bd871c85d83427e2ccb4d6fddafc768718ea077eadea372ed4'
+            '789a933080a85120dbeb12de2f243498b5e454128f2cf77dd16d47a27b235f79'
+            'c0335e5d3b1fe5263742a6d3ac406e02eb230e06a75bb8bf5ad84676f4e42e63'
+            '6d30c7ae416ec2c4632f44acd7d94baa842937cc45e6b50c6cff8ae1bad08619'
+            '70808c260372548760c306ac36cb62c186b5ab50c67a2cad6678061730cc8e38'
+            'a194c5eace0a38466ac34548c637297e949bb85abb61a43bab6187eb499e3aad'
+            'e2d75e11a2c220e5d3a450bb226e7e19d62a871764da5f76034fbc135fe6c749'
             '37b86ca3de148a34258e3176dbf41488d9dbd19e93adbd22a062b3c41332ce85'
             '4b4146786e68af3bd49e9fabdbc92232e51cb2da179ba8037287b96d8addd17c'
-            'c2cff4d3b04dde98bafc67e1a898fa8628f3bacba08531ce473edc43ddcccff'
+            'ac2cff4d3b04dde98bafc67e1a898fa8628f3bacba08531ce473edc43ddcccff'
             '749ac28edc2cd2ac3a4406becc13327a1ece3445196ca41cbfca460454fa01bf'
             'e55e88fe22256f079f5ac7b015c2d510912cae6f48a27a0f768b8f5f6acfc11b'
             '4690504af84e8c493132e8b7b1be57a0a0f940c420b05c14d4a17aef0ccbc16a'
@@ -135,18 +140,15 @@ prepare() {
   # use git-apply to add binary files
   git apply -p1 < "${srcdir}/0013-bootsplash.patch"
 
-  # add aufs4 support
-#  patch -Np1 -i "${srcdir}/aufs4.x-rcN-${_aufs}.patch"
-#  patch -Np1 -i "${srcdir}/aufs4-base.patch"
-#  patch -Np1 -i "${srcdir}/aufs4-kbuild.patch"
-#  patch -Np1 -i "${srcdir}/aufs4-loopback.patch"
-#  patch -Np1 -i "${srcdir}/aufs4-mmap.patch"
-#  patch -Np1 -i "${srcdir}/aufs4-standalone.patch"
-#  patch -Np1 -i "${srcdir}/tmpfs-idr.patch"
-#  patch -Np1 -i "${srcdir}/vfs-ino.patch"
-
-  # add BFQ scheduler
-#  patch -Np1 -i "${srcdir}/0001-BFQ-${_bfq}-${_bfqdate}.patch"
+  # add aufs5 support
+  patch -Np1 -i "${srcdir}/aufs5.x-rcN-${_aufs}.patch"
+  patch -Np1 -i "${srcdir}/aufs5-base.patch"
+  patch -Np1 -i "${srcdir}/aufs5-kbuild.patch"
+  patch -Np1 -i "${srcdir}/aufs5-loopback.patch"
+  patch -Np1 -i "${srcdir}/aufs5-mmap.patch"
+  patch -Np1 -i "${srcdir}/aufs5-standalone.patch"
+  patch -Np1 -i "${srcdir}/tmpfs-idr.patch"
+  patch -Np1 -i "${srcdir}/vfs-ino.patch"
 
   if [ "${CARCH}" = "x86_64" ]; then
     cat "${srcdir}/config.x86_64" > ./.config
@@ -154,7 +156,7 @@ prepare() {
     cat "${srcdir}/config" > ./.config
   fi
 
-#  cat "${srcdir}/config.aufs" >> ./.config
+  cat "${srcdir}/config.aufs" >> ./.config
 
   if [ "${_kernelname}" != "" ]; then
     sed -i "s|CONFIG_LOCALVERSION=.*|CONFIG_LOCALVERSION=\"${_kernelname}\"|g" ./.config
