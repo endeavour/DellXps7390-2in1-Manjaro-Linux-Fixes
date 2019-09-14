@@ -65,6 +65,7 @@ source=(#"https://www.kernel.org/pub/linux/kernel/v5.x/linux-${_basekernel}.tar.
         '0013-bootsplash.patch'
         # Dell XPS 7930 2-in-1 fixes
         'dellxps-fixlpss.patch'
+        'dellxps-fixsuspend.patch'
         )
 sha256sums=('d3ac631988c3fa59316cb902f30e7b26f1d6839d9a46f2581830e384651d61ad'
             'a4f124f673c7fb39ef53a487a635a76e51ddbe98c08c08f6a72d4039be334a33'
@@ -100,7 +101,8 @@ sha256sums=('d3ac631988c3fa59316cb902f30e7b26f1d6839d9a46f2581830e384651d61ad'
             '27471eee564ca3149dd271b0817719b5565a9594dc4d884fe3dc51a5f03832bc'
             '60e295601e4fb33d9bf65f198c54c7eb07c0d1e91e2ad1e0dd6cd6e142cb266d'
             '035ea4b2a7621054f4560471f45336b981538a40172d8f17285910d4e0e0b3ef'
-            'e74ace0fe483192dc2dc3174862388688c7a0175c286678cc9a785db5bdf2828')
+            'e74ace0fe483192dc2dc3174862388688c7a0175c286678cc9a785db5bdf2828'
+            'e938d089f27298054d97364984233b36461950ad539625f4565fbbca848c4aab')
 prepare() {
   #mv "${srcdir}/linux-stable-rc-${_commit}" "${srcdir}/linux-${_basekernel}"
   mv "${srcdir}/linux-${_commit}" "${srcdir}/linux-${_basekernel}"
