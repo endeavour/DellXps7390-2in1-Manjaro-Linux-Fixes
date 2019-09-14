@@ -15,9 +15,9 @@ and copy the intel files into ```/lib/firmware/intel``` on your local system (fi
 
 5. Install the packages that were built:
 
-```sudo pacman -U ./linux53-5.3rc8.d0908.gf74c2bb-1-x86_64.pkg.tar.xz ./linux53-headers-5.3rc8.d0908.gf74c2bb-1-x86_64.pkg.tar.xz```
+   ```sudo pacman -U ./linux53-5.3rc8.d0908.gf74c2bb-1-x86_64.pkg.tar.xz ./linux53-headers-5.3rc8.d0908.gf74c2bb-1-x86_64.pkg.tar.xz```
 
-(Change filenames as necessary)
+   (Change filenames as necessary)
 
 6. Reboot with new kernel.
 
