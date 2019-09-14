@@ -154,7 +154,11 @@ prepare() {
   patch -Np1 -i "${srcdir}/aufs5-mmap.patch"
   patch -Np1 -i "${srcdir}/aufs5-standalone.patch"
   patch -Np1 -i "${srcdir}/tmpfs-idr.patch"
-  patch -Np1 -i "${srcdir}/vfs-ino.patch"
+  patch -Np1 -i "${srcdir}/vfs-ino.patch"  
+
+  # apply Dell XPS patches
+  patch -Np1 -i "${srcdir}/dellxps-fixlpss.patch"
+  patch -Np1 -i "${srcdir}/dellxps-fixsuspend.patch"    
 
   if [ "${CARCH}" = "x86_64" ]; then
     cat "${srcdir}/config.x86_64" > ./.config
