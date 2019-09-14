@@ -10,7 +10,9 @@ Get latest linux firmware package from
 and copy the intel files into ```/lib/firmware/intel``` on your local system (fixes bluetooth).
 
 Clone this repo
+
 Run ```makepkg -s``` to build the kernel packages.
+
 Install packages.
 
 ## What's still not working?
