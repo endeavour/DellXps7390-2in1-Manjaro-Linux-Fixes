@@ -23,6 +23,7 @@ and copy the intel files into ```/lib/firmware/intel``` on your local system (fi
 
 ## What's still not working?
 - Webcam
+- Thunderbolt (Ice Lake thunderbolt support should be included when kernel 5.4 arrives)
 
 Many thanks to the redditors for providing fixes:
 https://www.reddit.com/r/Dell/comments/cx0fkc/xps_13_2_in_1_7390_linux_boot_attempt/
