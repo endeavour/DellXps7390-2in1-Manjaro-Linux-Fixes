@@ -62,7 +62,10 @@ source=(#"https://www.kernel.org/pub/linux/kernel/v5.x/linux-${_basekernel}.tar.
         '0010-bootsplash.patch'
         '0011-bootsplash.patch'
         '0012-bootsplash.patch'
-        '0013-bootsplash.patch')
+        '0013-bootsplash.patch'
+        # Dell XPS 7930 2-in-1 fixes
+        'dellxps-fixlpss.patch'
+        )
 sha256sums=('d3ac631988c3fa59316cb902f30e7b26f1d6839d9a46f2581830e384651d61ad'
             'a4f124f673c7fb39ef53a487a635a76e51ddbe98c08c08f6a72d4039be334a33'
             'f5903377d29fc538af98077b81982efdc091a8c628cb85566e88e1b5018f12bf'
@@ -96,7 +99,8 @@ sha256sums=('d3ac631988c3fa59316cb902f30e7b26f1d6839d9a46f2581830e384651d61ad'
             'e9f22cbb542591087d2d66dc6dc912b1434330ba3cd13d2df741d869a2c31e89'
             '27471eee564ca3149dd271b0817719b5565a9594dc4d884fe3dc51a5f03832bc'
             '60e295601e4fb33d9bf65f198c54c7eb07c0d1e91e2ad1e0dd6cd6e142cb266d'
-            '035ea4b2a7621054f4560471f45336b981538a40172d8f17285910d4e0e0b3ef')
+            '035ea4b2a7621054f4560471f45336b981538a40172d8f17285910d4e0e0b3ef'
+            'e74ace0fe483192dc2dc3174862388688c7a0175c286678cc9a785db5bdf2828')
 prepare() {
   #mv "${srcdir}/linux-stable-rc-${_commit}" "${srcdir}/linux-${_basekernel}"
   mv "${srcdir}/linux-${_commit}" "${srcdir}/linux-${_basekernel}"
