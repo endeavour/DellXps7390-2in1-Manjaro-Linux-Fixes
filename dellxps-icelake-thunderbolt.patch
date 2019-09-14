@@ -1,0 +1,1188 @@
+diff --git a/drivers/acpi/property.c b/drivers/acpi/property.c
+index ea3d700da3ca..e095334eaec9 100644
+--- a/drivers/acpi/property.c
++++ b/drivers/acpi/property.c
+@@ -39,6 +39,12 @@ static const guid_t prp_guids[] = {
+ 	/* External facing port GUID: efcc06cc-73ac-4bc3-bff0-76143807c389 */
+ 	GUID_INIT(0xefcc06cc, 0x73ac, 0x4bc3,
+ 		  0xbf, 0xf0, 0x76, 0x14, 0x38, 0x07, 0xc3, 0x89),
++	/* Thunderbolt GUID for IMR_VALID: c44d002f-69f9-4e7d-a904-a7baabdf43f7 */
++	GUID_INIT(0xc44d002f, 0x69f9, 0x4e7d,
++		  0xa9, 0x04, 0xa7, 0xba, 0xab, 0xdf, 0x43, 0xf7),
++	/* Thunderbolt GUID for WAKE_SUPPORTED: 6c501103-c189-4296-ba72-9bf5a26ebe5d */
++	GUID_INIT(0x6c501103, 0xc189, 0x4296,
++		  0xba, 0x72, 0x9b, 0xf5, 0xa2, 0x6e, 0xbe, 0x5d),
+ };
+ 
+ /* ACPI _DSD data subnodes GUID: dbb8e3e6-5886-4ba6-8795-1319f52a966b */
+diff --git a/drivers/thunderbolt/Makefile b/drivers/thunderbolt/Makefile
+index 3f55cb3c81b2..001187c577bf 100644
+--- a/drivers/thunderbolt/Makefile
++++ b/drivers/thunderbolt/Makefile
+@@ -1,4 +1,4 @@
+ # SPDX-License-Identifier: GPL-2.0-only
+ obj-${CONFIG_THUNDERBOLT} := thunderbolt.o
+-thunderbolt-objs := nhi.o ctl.o tb.o switch.o cap.o path.o tunnel.o eeprom.o
++thunderbolt-objs := nhi.o nhi_ops.o ctl.o tb.o switch.o cap.o path.o tunnel.o eeprom.o
+ thunderbolt-objs += domain.o dma_port.o icm.o property.o xdomain.o lc.o
+diff --git a/drivers/thunderbolt/ctl.c b/drivers/thunderbolt/ctl.c
+index 2427d73be731..2ec1af8f7968 100644
+--- a/drivers/thunderbolt/ctl.c
++++ b/drivers/thunderbolt/ctl.c
+@@ -930,6 +930,23 @@ struct tb_cfg_result tb_cfg_write_raw(struct tb_ctl *ctl, const void *buffer,
+ 	return res;
+ }
+ 
++static int tb_cfg_get_error(struct tb_ctl *ctl, enum tb_cfg_space space,
++			    const struct tb_cfg_result *res)
++{
++	/*
++	 * For unimplemented ports access to port config space may return
++	 * TB_CFG_ERROR_INVALID_CONFIG_SPACE (alternatively their type is
++	 * set to TB_TYPE_INACTIVE). In the former case return -ENODEV so
++	 * that the caller can mark the port as disabled.
++	 */
++	if (space == TB_CFG_PORT &&
++	    res->tb_error == TB_CFG_ERROR_INVALID_CONFIG_SPACE)
++		return -ENODEV;
++
++	tb_cfg_print_error(ctl, res);
++	return -EIO;
++}
++
+ int tb_cfg_read(struct tb_ctl *ctl, void *buffer, u64 route, u32 port,
+ 		enum tb_cfg_space space, u32 offset, u32 length)
+ {
+@@ -942,8 +959,7 @@ int tb_cfg_read(struct tb_ctl *ctl, void *buffer, u64 route, u32 port,
+ 
+ 	case 1:
+ 		/* Thunderbolt error, tb_error holds the actual number */
+-		tb_cfg_print_error(ctl, &res);
+-		return -EIO;
++		return tb_cfg_get_error(ctl, space, &res);
+ 
+ 	case -ETIMEDOUT:
+ 		tb_ctl_warn(ctl, "timeout reading config space %u from %#x\n",
+@@ -969,8 +985,7 @@ int tb_cfg_write(struct tb_ctl *ctl, const void *buffer, u64 route, u32 port,
+ 
+ 	case 1:
+ 		/* Thunderbolt error, tb_error holds the actual number */
+-		tb_cfg_print_error(ctl, &res);
+-		return -EIO;
++		return tb_cfg_get_error(ctl, space, &res);
+ 
+ 	case -ETIMEDOUT:
+ 		tb_ctl_warn(ctl, "timeout writing config space %u to %#x\n",
+diff --git a/drivers/thunderbolt/eeprom.c b/drivers/thunderbolt/eeprom.c
+index 81e8ac4c5805..ee5196479854 100644
+--- a/drivers/thunderbolt/eeprom.c
++++ b/drivers/thunderbolt/eeprom.c
+@@ -414,7 +414,7 @@ static int tb_drom_copy_efi(struct tb_switch *sw, u16 *size)
+ 	struct device *dev = &sw->tb->nhi->pdev->dev;
+ 	int len, res;
+ 
+-	len = device_property_read_u8_array(dev, "ThunderboltDROM", NULL, 0);
++	len = device_property_count_u8(dev, "ThunderboltDROM");
+ 	if (len < 0 || len < sizeof(struct tb_drom_header))
+ 		return -EINVAL;
+ 
+@@ -525,10 +525,6 @@ int tb_drom_read(struct tb_switch *sw)
+ 		sw->ports[3].dual_link_port = &sw->ports[4];
+ 		sw->ports[4].dual_link_port = &sw->ports[3];
+ 
+-		/* Port 5 is inaccessible on this gen 1 controller */
+-		if (sw->config.device_id == PCI_DEVICE_ID_INTEL_LIGHT_RIDGE)
+-			sw->ports[5].disabled = true;
+-
+ 		return 0;
+ 	}
+ 
+diff --git a/drivers/thunderbolt/icm.c b/drivers/thunderbolt/icm.c
+index fbdcef56a676..245588f691e7 100644
+--- a/drivers/thunderbolt/icm.c
++++ b/drivers/thunderbolt/icm.c
+@@ -55,16 +55,20 @@
+  * @safe_mode: ICM is in safe mode
+  * @max_boot_acl: Maximum number of preboot ACL entries (%0 if not supported)
+  * @rpm: Does the controller support runtime PM (RTD3)
++ * @can_upgrade_nvm: Can the NVM firmware be upgrade on this controller
++ * @veto: Is RTD3 veto in effect
+  * @is_supported: Checks if we can support ICM on this controller
+  * @cio_reset: Trigger CIO reset
+  * @get_mode: Read and return the ICM firmware mode (optional)
+  * @get_route: Find a route string for given switch
+  * @save_devices: Ask ICM to save devices to ACL when suspending (optional)
+  * @driver_ready: Send driver ready message to ICM
++ * @set_uuid: Set UUID for the root switch (optional)
+  * @device_connected: Handle device connected ICM message
+  * @device_disconnected: Handle device disconnected ICM message
+  * @xdomain_connected - Handle XDomain connected ICM message
+  * @xdomain_disconnected - Handle XDomain disconnected ICM message
++ * @rtd3_veto: Handle RTD3 veto notification ICM message
+  */
+ struct icm {
+ 	struct mutex request_lock;
+@@ -74,6 +78,8 @@ struct icm {
+ 	int vnd_cap;
+ 	bool safe_mode;
+ 	bool rpm;
++	bool can_upgrade_nvm;
++	bool veto;
+ 	bool (*is_supported)(struct tb *tb);
+ 	int (*cio_reset)(struct tb *tb);
+ 	int (*get_mode)(struct tb *tb);
+@@ -82,6 +88,7 @@ struct icm {
+ 	int (*driver_ready)(struct tb *tb,
+ 			    enum tb_security_level *security_level,
+ 			    size_t *nboot_acl, bool *rpm);
++	void (*set_uuid)(struct tb *tb);
+ 	void (*device_connected)(struct tb *tb,
+ 				 const struct icm_pkg_header *hdr);
+ 	void (*device_disconnected)(struct tb *tb,
+@@ -90,6 +97,7 @@ struct icm {
+ 				  const struct icm_pkg_header *hdr);
+ 	void (*xdomain_disconnected)(struct tb *tb,
+ 				     const struct icm_pkg_header *hdr);
++	void (*rtd3_veto)(struct tb *tb, const struct icm_pkg_header *hdr);
+ };
+ 
+ struct icm_notification {
+@@ -294,6 +302,43 @@ static int icm_request(struct tb *tb, const void *request, size_t request_size,
+ 	return -ETIMEDOUT;
+ }
+ 
++/*
++ * If rescan is queued to run (we are resuming), postpone it to give the
++ * firmware some more time to send device connected notifications for next
++ * devices in the chain.
++ */
++static void icm_postpone_rescan(struct tb *tb)
++{
++	struct icm *icm = tb_priv(tb);
++
++	if (delayed_work_pending(&icm->rescan_work))
++		mod_delayed_work(tb->wq, &icm->rescan_work,
++				 msecs_to_jiffies(500));
++}
++
++static void icm_veto_begin(struct tb *tb)
++{
++	struct icm *icm = tb_priv(tb);
++
++	if (!icm->veto) {
++		icm->veto = true;
++		/* Keep the domain powered while veto is in effect */
++		pm_runtime_get(&tb->dev);
++	}
++}
++
++static void icm_veto_end(struct tb *tb)
++{
++	struct icm *icm = tb_priv(tb);
++
++	if (icm->veto) {
++		icm->veto = false;
++		/* Allow the domain suspend now */
++		pm_runtime_mark_last_busy(&tb->dev);
++		pm_runtime_put_autosuspend(&tb->dev);
++	}
++}
++
+ static bool icm_fr_is_supported(struct tb *tb)
+ {
+ 	return !x86_apple_machine;
+@@ -517,14 +562,16 @@ static int icm_fr_disconnect_xdomain_paths(struct tb *tb, struct tb_xdomain *xd)
+ 	return 0;
+ }
+ 
+-static void add_switch(struct tb_switch *parent_sw, u64 route,
+-		       const uuid_t *uuid, const u8 *ep_name,
+-		       size_t ep_name_size, u8 connection_id, u8 connection_key,
+-		       u8 link, u8 depth, enum tb_security_level security_level,
+-		       bool authorized, bool boot)
++static struct tb_switch *add_switch(struct tb_switch *parent_sw, u64 route,
++				    const uuid_t *uuid, const u8 *ep_name,
++				    size_t ep_name_size, u8 connection_id,
++				    u8 connection_key, u8 link, u8 depth,
++				    enum tb_security_level security_level,
++				    bool authorized, bool boot)
+ {
+ 	const struct intel_vss *vss;
+ 	struct tb_switch *sw;
++	int ret;
+ 
+ 	pm_runtime_get_sync(&parent_sw->dev);
+ 
+@@ -555,14 +602,18 @@ static void add_switch(struct tb_switch *parent_sw, u64 route,
+ 	tb_port_at(route, parent_sw)->remote = tb_upstream_port(sw);
+ 	tb_upstream_port(sw)->remote = tb_port_at(route, parent_sw);
+ 
+-	if (tb_switch_add(sw)) {
++	ret = tb_switch_add(sw);
++	if (ret) {
+ 		tb_port_at(tb_route(sw), parent_sw)->remote = NULL;
+ 		tb_switch_put(sw);
++		sw = ERR_PTR(ret);
+ 	}
+ 
+ out:
+ 	pm_runtime_mark_last_busy(&parent_sw->dev);
+ 	pm_runtime_put_autosuspend(&parent_sw->dev);
++
++	return sw;
+ }
+ 
+ static void update_switch(struct tb_switch *parent_sw, struct tb_switch *sw,
+@@ -654,6 +705,8 @@ icm_fr_device_connected(struct tb *tb, const struct icm_pkg_header *hdr)
+ 	u64 route;
+ 	int ret;
+ 
++	icm_postpone_rescan(tb);
++
+ 	link = pkg->link_info & ICM_LINK_INFO_LINK_MASK;
+ 	depth = (pkg->link_info & ICM_LINK_INFO_DEPTH_MASK) >>
+ 		ICM_LINK_INFO_DEPTH_SHIFT;
+@@ -1084,7 +1137,8 @@ static int icm_tr_disconnect_xdomain_paths(struct tb *tb, struct tb_xdomain *xd)
+ }
+ 
+ static void
+-icm_tr_device_connected(struct tb *tb, const struct icm_pkg_header *hdr)
++__icm_tr_device_connected(struct tb *tb, const struct icm_pkg_header *hdr,
++			  bool force_rtd3)
+ {
+ 	const struct icm_tr_event_device_connected *pkg =
+ 		(const struct icm_tr_event_device_connected *)hdr;
+@@ -1094,6 +1148,8 @@ icm_tr_device_connected(struct tb *tb, const struct icm_pkg_header *hdr)
+ 	bool authorized, boot;
+ 	u64 route;
+ 
++	icm_postpone_rescan(tb);
++
+ 	/*
+ 	 * Currently we don't use the QoS information coming with the
+ 	 * device connected message so simply just ignore that extra
+@@ -1149,13 +1205,21 @@ icm_tr_device_connected(struct tb *tb, const struct icm_pkg_header *hdr)
+ 		return;
+ 	}
+ 
+-	add_switch(parent_sw, route, &pkg->ep_uuid, (const u8 *)pkg->ep_name,
+-		   sizeof(pkg->ep_name), pkg->connection_id,
+-		   0, 0, 0, security_level, authorized, boot);
++	sw = add_switch(parent_sw, route, &pkg->ep_uuid, (const u8 *)pkg->ep_name,
++			sizeof(pkg->ep_name), pkg->connection_id, 0, 0, 0,
++			security_level, authorized, boot);
++	if (!IS_ERR(sw) && force_rtd3)
++		sw->rpm = true;
+ 
+ 	tb_switch_put(parent_sw);
+ }
+ 
++static void
++icm_tr_device_connected(struct tb *tb, const struct icm_pkg_header *hdr)
++{
++	__icm_tr_device_connected(tb, hdr, false);
++}
++
+ static void
+ icm_tr_device_disconnected(struct tb *tb, const struct icm_pkg_header *hdr)
+ {
+@@ -1466,6 +1530,61 @@ static int icm_ar_set_boot_acl(struct tb *tb, const uuid_t *uuids,
+ 	return 0;
+ }
+ 
++static int
++icm_icl_driver_ready(struct tb *tb, enum tb_security_level *security_level,
++		    size_t *nboot_acl, bool *rpm)
++{
++	struct icm_tr_pkg_driver_ready_response reply;
++	struct icm_pkg_driver_ready request = {
++		.hdr.code = ICM_DRIVER_READY,
++	};
++	int ret;
++
++	memset(&reply, 0, sizeof(reply));
++	ret = icm_request(tb, &request, sizeof(request), &reply, sizeof(reply),
++			  1, 20000);
++	if (ret)
++		return ret;
++
++	/* Ice Lake always supports RTD3 */
++	if (rpm)
++		*rpm = true;
++
++	return 0;
++}
++
++static void icm_icl_set_uuid(struct tb *tb)
++{
++	struct tb_nhi *nhi = tb->nhi;
++	u32 uuid[4];
++
++	pci_read_config_dword(nhi->pdev, VS_CAP_10, &uuid[0]);
++	pci_read_config_dword(nhi->pdev, VS_CAP_11, &uuid[1]);
++	uuid[2] = 0xffffffff;
++	uuid[3] = 0xffffffff;
++
++	tb->root_switch->uuid = kmemdup(uuid, sizeof(uuid), GFP_KERNEL);
++}
++
++static void
++icm_icl_device_connected(struct tb *tb, const struct icm_pkg_header *hdr)
++{
++	__icm_tr_device_connected(tb, hdr, true);
++}
++
++static void icm_icl_rtd3_veto(struct tb *tb, const struct icm_pkg_header *hdr)
++{
++	const struct icm_icl_event_rtd3_veto *pkg =
++		(const struct icm_icl_event_rtd3_veto *)hdr;
++
++	tb_dbg(tb, "ICM rtd3 veto=0x%08x\n", pkg->veto_reason);
++
++	if (pkg->veto_reason)
++		icm_veto_begin(tb);
++	else
++		icm_veto_end(tb);
++}
++
+ static void icm_handle_notification(struct work_struct *work)
+ {
+ 	struct icm_notification *n = container_of(work, typeof(*n), work);
+@@ -1493,6 +1612,9 @@ static void icm_handle_notification(struct work_struct *work)
+ 		case ICM_EVENT_XDOMAIN_DISCONNECTED:
+ 			icm->xdomain_disconnected(tb, n->pkg);
+ 			break;
++		case ICM_EVENT_RTD3_VETO:
++			icm->rtd3_veto(tb, n->pkg);
++			break;
+ 		}
+ 	}
+ 
+@@ -1851,6 +1973,13 @@ static void icm_complete(struct tb *tb)
+ 	if (tb->nhi->going_away)
+ 		return;
+ 
++	/*
++	 * If RTD3 was vetoed before we entered system suspend allow it
++	 * again now before driver ready is sent. Firmware sends a new RTD3
++	 * veto if it is still the case after we have sent it driver ready
++	 * command.
++	 */
++	icm_veto_end(tb);
+ 	icm_unplug_children(tb->root_switch);
+ 
+ 	/*
+@@ -1913,14 +2042,12 @@ static int icm_start(struct tb *tb)
+ 	if (IS_ERR(tb->root_switch))
+ 		return PTR_ERR(tb->root_switch);
+ 
+-	/*
+-	 * NVM upgrade has not been tested on Apple systems and they
+-	 * don't provide images publicly either. To be on the safe side
+-	 * prevent root switch NVM upgrade on Macs for now.
+-	 */
+-	tb->root_switch->no_nvm_upgrade = x86_apple_machine;
++	tb->root_switch->no_nvm_upgrade = !icm->can_upgrade_nvm;
+ 	tb->root_switch->rpm = icm->rpm;
+ 
++	if (icm->set_uuid)
++		icm->set_uuid(tb);
++
+ 	ret = tb_switch_add(tb->root_switch);
+ 	if (ret) {
+ 		tb_switch_put(tb->root_switch);
+@@ -2005,6 +2132,19 @@ static const struct tb_cm_ops icm_tr_ops = {
+ 	.disconnect_xdomain_paths = icm_tr_disconnect_xdomain_paths,
+ };
+ 
++/* Ice Lake */
++static const struct tb_cm_ops icm_icl_ops = {
++	.driver_ready = icm_driver_ready,
++	.start = icm_start,
++	.stop = icm_stop,
++	.complete = icm_complete,
++	.runtime_suspend = icm_runtime_suspend,
++	.runtime_resume = icm_runtime_resume,
++	.handle_event = icm_handle_event,
++	.approve_xdomain_paths = icm_tr_approve_xdomain_paths,
++	.disconnect_xdomain_paths = icm_tr_disconnect_xdomain_paths,
++};
++
+ struct tb *icm_probe(struct tb_nhi *nhi)
+ {
+ 	struct icm *icm;
+@@ -2021,6 +2161,7 @@ struct tb *icm_probe(struct tb_nhi *nhi)
+ 	switch (nhi->pdev->device) {
+ 	case PCI_DEVICE_ID_INTEL_FALCON_RIDGE_2C_NHI:
+ 	case PCI_DEVICE_ID_INTEL_FALCON_RIDGE_4C_NHI:
++		icm->can_upgrade_nvm = true;
+ 		icm->is_supported = icm_fr_is_supported;
+ 		icm->get_route = icm_fr_get_route;
+ 		icm->save_devices = icm_fr_save_devices;
+@@ -2038,6 +2179,13 @@ struct tb *icm_probe(struct tb_nhi *nhi)
+ 	case PCI_DEVICE_ID_INTEL_ALPINE_RIDGE_C_4C_NHI:
+ 	case PCI_DEVICE_ID_INTEL_ALPINE_RIDGE_C_2C_NHI:
+ 		icm->max_boot_acl = ICM_AR_PREBOOT_ACL_ENTRIES;
++		/*
++		 * NVM upgrade has not been tested on Apple systems and
++		 * they don't provide images publicly either. To be on
++		 * the safe side prevent root switch NVM upgrade on Macs
++		 * for now.
++		 */
++		icm->can_upgrade_nvm = !x86_apple_machine;
+ 		icm->is_supported = icm_ar_is_supported;
+ 		icm->cio_reset = icm_ar_cio_reset;
+ 		icm->get_mode = icm_ar_get_mode;
+@@ -2054,6 +2202,7 @@ struct tb *icm_probe(struct tb_nhi *nhi)
+ 	case PCI_DEVICE_ID_INTEL_TITAN_RIDGE_2C_NHI:
+ 	case PCI_DEVICE_ID_INTEL_TITAN_RIDGE_4C_NHI:
+ 		icm->max_boot_acl = ICM_AR_PREBOOT_ACL_ENTRIES;
++		icm->can_upgrade_nvm = !x86_apple_machine;
+ 		icm->is_supported = icm_ar_is_supported;
+ 		icm->cio_reset = icm_tr_cio_reset;
+ 		icm->get_mode = icm_ar_get_mode;
+@@ -2064,6 +2213,19 @@ struct tb *icm_probe(struct tb_nhi *nhi)
+ 		icm->xdomain_disconnected = icm_tr_xdomain_disconnected;
+ 		tb->cm_ops = &icm_tr_ops;
+ 		break;
++
++	case PCI_DEVICE_ID_INTEL_ICL_NHI0:
++	case PCI_DEVICE_ID_INTEL_ICL_NHI1:
++		icm->is_supported = icm_ar_is_supported;
++		icm->driver_ready = icm_icl_driver_ready;
++		icm->set_uuid = icm_icl_set_uuid;
++		icm->device_connected = icm_icl_device_connected;
++		icm->device_disconnected = icm_tr_device_disconnected;
++		icm->xdomain_connected = icm_tr_xdomain_connected;
++		icm->xdomain_disconnected = icm_tr_xdomain_disconnected;
++		icm->rtd3_veto = icm_icl_rtd3_veto;
++		tb->cm_ops = &icm_icl_ops;
++		break;
+ 	}
+ 
+ 	if (!icm->is_supported || !icm->is_supported(tb)) {
+diff --git a/drivers/thunderbolt/nhi.c b/drivers/thunderbolt/nhi.c
+index 27fbe62c7ddd..641b21b54460 100644
+--- a/drivers/thunderbolt/nhi.c
++++ b/drivers/thunderbolt/nhi.c
+@@ -16,6 +16,7 @@
+ #include <linux/interrupt.h>
+ #include <linux/module.h>
+ #include <linux/delay.h>
++#include <linux/property.h>
+ 
+ #include "nhi.h"
+ #include "nhi_regs.h"
+@@ -143,9 +144,20 @@ static void __iomem *ring_options_base(struct tb_ring *ring)
+ 	return io;
+ }
+ 
+-static void ring_iowrite16desc(struct tb_ring *ring, u32 value, u32 offset)
++static void ring_iowrite_cons(struct tb_ring *ring, u16 cons)
+ {
+-	iowrite16(value, ring_desc_base(ring) + offset);
++	/*
++	 * The other 16-bits in the register is read-only and writes to it
++	 * are ignored by the hardware so we can save one ioread32() by
++	 * filling the read-only bits with zeroes.
++	 */
++	iowrite32(cons, ring_desc_base(ring) + 8);
++}
++
++static void ring_iowrite_prod(struct tb_ring *ring, u16 prod)
++{
++	/* See ring_iowrite_cons() above for explanation */
++	iowrite32(prod << 16, ring_desc_base(ring) + 8);
+ }
+ 
+ static void ring_iowrite32desc(struct tb_ring *ring, u32 value, u32 offset)
+@@ -197,7 +209,10 @@ static void ring_write_descriptors(struct tb_ring *ring)
+ 			descriptor->sof = frame->sof;
+ 		}
+ 		ring->head = (ring->head + 1) % ring->size;
+-		ring_iowrite16desc(ring, ring->head, ring->is_tx ? 10 : 8);
++		if (ring->is_tx)
++			ring_iowrite_prod(ring, ring->head);
++		else
++			ring_iowrite_cons(ring, ring->head);
+ 	}
+ }
+ 
+@@ -662,7 +677,7 @@ void tb_ring_stop(struct tb_ring *ring)
+ 
+ 	ring_iowrite32options(ring, 0, 0);
+ 	ring_iowrite64desc(ring, 0, 0);
+-	ring_iowrite16desc(ring, 0, ring->is_tx ? 10 : 8);
++	ring_iowrite32desc(ring, 0, 8);
+ 	ring_iowrite32desc(ring, 0, 12);
+ 	ring->head = 0;
+ 	ring->tail = 0;
+@@ -845,12 +860,52 @@ static irqreturn_t nhi_msi(int irq, void *data)
+ 	return IRQ_HANDLED;
+ }
+ 
+-static int nhi_suspend_noirq(struct device *dev)
++static int __nhi_suspend_noirq(struct device *dev, bool wakeup)
+ {
+ 	struct pci_dev *pdev = to_pci_dev(dev);
+ 	struct tb *tb = pci_get_drvdata(pdev);
++	struct tb_nhi *nhi = tb->nhi;
++	int ret;
++
++	ret = tb_domain_suspend_noirq(tb);
++	if (ret)
++		return ret;
++
++	if (nhi->ops && nhi->ops->suspend_noirq) {
++		ret = nhi->ops->suspend_noirq(tb->nhi, wakeup);
++		if (ret)
++			return ret;
++	}
++
++	return 0;
++}
++
++static int nhi_suspend_noirq(struct device *dev)
++{
++	return __nhi_suspend_noirq(dev, device_may_wakeup(dev));
++}
++
++static bool nhi_wake_supported(struct pci_dev *pdev)
++{
++	u8 val;
++
++	/*
++	 * If power rails are sustainable for wakeup from S4 this
++	 * property is set by the BIOS.
++	 */
++	if (device_property_read_u8(&pdev->dev, "WAKE_SUPPORTED", &val))
++		return !!val;
++
++	return true;
++}
++
++static int nhi_poweroff_noirq(struct device *dev)
++{
++	struct pci_dev *pdev = to_pci_dev(dev);
++	bool wakeup;
+ 
+-	return tb_domain_suspend_noirq(tb);
++	wakeup = device_may_wakeup(dev) && nhi_wake_supported(pdev);
++	return __nhi_suspend_noirq(dev, wakeup);
+ }
+ 
+ static void nhi_enable_int_throttling(struct tb_nhi *nhi)
+@@ -873,16 +928,24 @@ static int nhi_resume_noirq(struct device *dev)
+ {
+ 	struct pci_dev *pdev = to_pci_dev(dev);
+ 	struct tb *tb = pci_get_drvdata(pdev);
++	struct tb_nhi *nhi = tb->nhi;
++	int ret;
+ 
+ 	/*
+ 	 * Check that the device is still there. It may be that the user
+ 	 * unplugged last device which causes the host controller to go
+ 	 * away on PCs.
+ 	 */
+-	if (!pci_device_is_present(pdev))
+-		tb->nhi->going_away = true;
+-	else
++	if (!pci_device_is_present(pdev)) {
++		nhi->going_away = true;
++	} else {
++		if (nhi->ops && nhi->ops->resume_noirq) {
++			ret = nhi->ops->resume_noirq(nhi);
++			if (ret)
++				return ret;
++		}
+ 		nhi_enable_int_throttling(tb->nhi);
++	}
+ 
+ 	return tb_domain_resume_noirq(tb);
+ }
+@@ -915,16 +978,35 @@ static int nhi_runtime_suspend(struct device *dev)
+ {
+ 	struct pci_dev *pdev = to_pci_dev(dev);
+ 	struct tb *tb = pci_get_drvdata(pdev);
++	struct tb_nhi *nhi = tb->nhi;
++	int ret;
++
++	ret = tb_domain_runtime_suspend(tb);
++	if (ret)
++		return ret;
+ 
+-	return tb_domain_runtime_suspend(tb);
++	if (nhi->ops && nhi->ops->runtime_suspend) {
++		ret = nhi->ops->runtime_suspend(tb->nhi);
++		if (ret)
++			return ret;
++	}
++	return 0;
+ }
+ 
+ static int nhi_runtime_resume(struct device *dev)
+ {
+ 	struct pci_dev *pdev = to_pci_dev(dev);
+ 	struct tb *tb = pci_get_drvdata(pdev);
++	struct tb_nhi *nhi = tb->nhi;
++	int ret;
+ 
+-	nhi_enable_int_throttling(tb->nhi);
++	if (nhi->ops && nhi->ops->runtime_resume) {
++		ret = nhi->ops->runtime_resume(nhi);
++		if (ret)
++			return ret;
++	}
++
++	nhi_enable_int_throttling(nhi);
+ 	return tb_domain_runtime_resume(tb);
+ }
+ 
+@@ -952,6 +1034,9 @@ static void nhi_shutdown(struct tb_nhi *nhi)
+ 		flush_work(&nhi->interrupt_work);
+ 	}
+ 	ida_destroy(&nhi->msix_ida);
++
++	if (nhi->ops && nhi->ops->shutdown)
++		nhi->ops->shutdown(nhi);
+ }
+ 
+ static int nhi_init_msi(struct tb_nhi *nhi)
+@@ -996,12 +1081,27 @@ static int nhi_init_msi(struct tb_nhi *nhi)
+ 	return 0;
+ }
+ 
++static bool nhi_imr_valid(struct pci_dev *pdev)
++{
++	u8 val;
++
++	if (!device_property_read_u8(&pdev->dev, "IMR_VALID", &val))
++		return !!val;
++
++	return true;
++}
++
+ static int nhi_probe(struct pci_dev *pdev, const struct pci_device_id *id)
+ {
+ 	struct tb_nhi *nhi;
+ 	struct tb *tb;
+ 	int res;
+ 
++	if (!nhi_imr_valid(pdev)) {
++		dev_warn(&pdev->dev, "firmware image not valid, aborting\n");
++		return -ENODEV;
++	}
++
+ 	res = pcim_enable_device(pdev);
+ 	if (res) {
+ 		dev_err(&pdev->dev, "cannot enable PCI device, aborting\n");
+@@ -1019,6 +1119,7 @@ static int nhi_probe(struct pci_dev *pdev, const struct pci_device_id *id)
+ 		return -ENOMEM;
+ 
+ 	nhi->pdev = pdev;
++	nhi->ops = (const struct tb_nhi_ops *)id->driver_data;
+ 	/* cannot fail - table is allocated bin pcim_iomap_regions */
+ 	nhi->iobase = pcim_iomap_table(pdev)[0];
+ 	nhi->hop_count = ioread32(nhi->iobase + REG_HOP_COUNT) & 0x3ff;
+@@ -1051,6 +1152,12 @@ static int nhi_probe(struct pci_dev *pdev, const struct pci_device_id *id)
+ 
+ 	pci_set_master(pdev);
+ 
++	if (nhi->ops && nhi->ops->init) {
++		res = nhi->ops->init(nhi);
++		if (res)
++			return res;
++	}
++
+ 	tb = icm_probe(nhi);
+ 	if (!tb)
+ 		tb = tb_probe(nhi);
+@@ -1111,6 +1218,7 @@ static const struct dev_pm_ops nhi_pm_ops = {
+ 	.restore_noirq = nhi_resume_noirq,
+ 	.suspend = nhi_suspend,
+ 	.freeze = nhi_suspend,
++	.poweroff_noirq = nhi_poweroff_noirq,
+ 	.poweroff = nhi_suspend,
+ 	.complete = nhi_complete,
+ 	.runtime_suspend = nhi_runtime_suspend,
+@@ -1158,6 +1266,10 @@ static struct pci_device_id nhi_ids[] = {
+ 	{ PCI_VDEVICE(INTEL, PCI_DEVICE_ID_INTEL_ALPINE_RIDGE_C_USBONLY_NHI) },
+ 	{ PCI_VDEVICE(INTEL, PCI_DEVICE_ID_INTEL_TITAN_RIDGE_2C_NHI) },
+ 	{ PCI_VDEVICE(INTEL, PCI_DEVICE_ID_INTEL_TITAN_RIDGE_4C_NHI) },
++	{ PCI_VDEVICE(INTEL, PCI_DEVICE_ID_INTEL_ICL_NHI0),
++	  .driver_data = (kernel_ulong_t)&icl_nhi_ops },
++	{ PCI_VDEVICE(INTEL, PCI_DEVICE_ID_INTEL_ICL_NHI1),
++	  .driver_data = (kernel_ulong_t)&icl_nhi_ops },
+ 
+ 	{ 0,}
+ };
+diff --git a/drivers/thunderbolt/nhi.h b/drivers/thunderbolt/nhi.h
+index 1b5d47ecd3ed..b7b973949f8e 100644
+--- a/drivers/thunderbolt/nhi.h
++++ b/drivers/thunderbolt/nhi.h
+@@ -30,6 +30,26 @@ enum nhi_mailbox_cmd {
+ int nhi_mailbox_cmd(struct tb_nhi *nhi, enum nhi_mailbox_cmd cmd, u32 data);
+ enum nhi_fw_mode nhi_mailbox_mode(struct tb_nhi *nhi);
+ 
++/**
++ * struct tb_nhi_ops - NHI specific optional operations
++ * @init: NHI specific initialization
++ * @suspend_noirq: NHI specific suspend_noirq hook
++ * @resume_noirq: NHI specific resume_noirq hook
++ * @runtime_suspend: NHI specific runtime_suspend hook
++ * @runtime_resume: NHI specific runtime_resume hook
++ * @shutdown: NHI specific shutdown
++ */
++struct tb_nhi_ops {
++	int (*init)(struct tb_nhi *nhi);
++	int (*suspend_noirq)(struct tb_nhi *nhi, bool wakeup);
++	int (*resume_noirq)(struct tb_nhi *nhi);
++	int (*runtime_suspend)(struct tb_nhi *nhi);
++	int (*runtime_resume)(struct tb_nhi *nhi);
++	void (*shutdown)(struct tb_nhi *nhi);
++};
++
++extern const struct tb_nhi_ops icl_nhi_ops;
++
+ /*
+  * PCI IDs used in this driver from Win Ridge forward. There is no
+  * need for the PCI quirk anymore as we will use ICM also on Apple
+@@ -51,5 +71,7 @@ enum nhi_fw_mode nhi_mailbox_mode(struct tb_nhi *nhi);
+ #define PCI_DEVICE_ID_INTEL_TITAN_RIDGE_4C_BRIDGE	0x15ea
+ #define PCI_DEVICE_ID_INTEL_TITAN_RIDGE_4C_NHI		0x15eb
+ #define PCI_DEVICE_ID_INTEL_TITAN_RIDGE_DD_BRIDGE	0x15ef
++#define PCI_DEVICE_ID_INTEL_ICL_NHI1			0x8a0d
++#define PCI_DEVICE_ID_INTEL_ICL_NHI0			0x8a17
+ 
+ #endif
+diff --git a/drivers/thunderbolt/nhi_ops.c b/drivers/thunderbolt/nhi_ops.c
+new file mode 100644
+index 000000000000..61cd09cef943
+--- /dev/null
++++ b/drivers/thunderbolt/nhi_ops.c
+@@ -0,0 +1,179 @@
++// SPDX-License-Identifier: GPL-2.0
++/*
++ * NHI specific operations
++ *
++ * Copyright (C) 2019, Intel Corporation
++ * Author: Mika Westerberg <mika.westerberg@linux.intel.com>
++ */
++
++#include <linux/delay.h>
++#include <linux/suspend.h>
++
++#include "nhi.h"
++#include "nhi_regs.h"
++#include "tb.h"
++
++/* Ice Lake specific NHI operations */
++
++#define ICL_LC_MAILBOX_TIMEOUT	500 /* ms */
++
++static int check_for_device(struct device *dev, void *data)
++{
++	return tb_is_switch(dev);
++}
++
++static bool icl_nhi_is_device_connected(struct tb_nhi *nhi)
++{
++	struct tb *tb = pci_get_drvdata(nhi->pdev);
++	int ret;
++
++	ret = device_for_each_child(&tb->root_switch->dev, NULL,
++				    check_for_device);
++	return ret > 0;
++}
++
++static int icl_nhi_force_power(struct tb_nhi *nhi, bool power)
++{
++	u32 vs_cap;
++
++	/*
++	 * The Thunderbolt host controller is present always in Ice Lake
++	 * but the firmware may not be loaded and running (depending
++	 * whether there is device connected and so on). Each time the
++	 * controller is used we need to "Force Power" it first and wait
++	 * for the firmware to indicate it is up and running. This "Force
++	 * Power" is really not about actually powering on/off the
++	 * controller so it is accessible even if "Force Power" is off.
++	 *
++	 * The actual power management happens inside shared ACPI power
++	 * resources using standard ACPI methods.
++	 */
++	pci_read_config_dword(nhi->pdev, VS_CAP_22, &vs_cap);
++	if (power) {
++		vs_cap &= ~VS_CAP_22_DMA_DELAY_MASK;
++		vs_cap |= 0x22 << VS_CAP_22_DMA_DELAY_SHIFT;
++		vs_cap |= VS_CAP_22_FORCE_POWER;
++	} else {
++		vs_cap &= ~VS_CAP_22_FORCE_POWER;
++	}
++	pci_write_config_dword(nhi->pdev, VS_CAP_22, vs_cap);
++
++	if (power) {
++		unsigned int retries = 10;
++		u32 val;
++
++		/* Wait until the firmware tells it is up and running */
++		do {
++			pci_read_config_dword(nhi->pdev, VS_CAP_9, &val);
++			if (val & VS_CAP_9_FW_READY)
++				return 0;
++			msleep(250);
++		} while (--retries);
++
++		return -ETIMEDOUT;
++	}
++
++	return 0;
++}
++
++static void icl_nhi_lc_mailbox_cmd(struct tb_nhi *nhi, enum icl_lc_mailbox_cmd cmd)
++{
++	u32 data;
++
++	pci_read_config_dword(nhi->pdev, VS_CAP_19, &data);
++	data = (cmd << VS_CAP_19_CMD_SHIFT) & VS_CAP_19_CMD_MASK;
++	pci_write_config_dword(nhi->pdev, VS_CAP_19, data | VS_CAP_19_VALID);
++}
++
++static int icl_nhi_lc_mailbox_cmd_complete(struct tb_nhi *nhi, int timeout)
++{
++	unsigned long end;
++	u32 data;
++
++	if (!timeout)
++		goto clear;
++
++	end = jiffies + msecs_to_jiffies(timeout);
++	do {
++		pci_read_config_dword(nhi->pdev, VS_CAP_18, &data);
++		if (data & VS_CAP_18_DONE)
++			goto clear;
++		msleep(100);
++	} while (time_before(jiffies, end));
++
++	return -ETIMEDOUT;
++
++clear:
++	/* Clear the valid bit */
++	pci_write_config_dword(nhi->pdev, VS_CAP_19, 0);
++	return 0;
++}
++
++static void icl_nhi_set_ltr(struct tb_nhi *nhi)
++{
++	u32 max_ltr, ltr;
++
++	pci_read_config_dword(nhi->pdev, VS_CAP_16, &max_ltr);
++	max_ltr &= 0xffff;
++	/* Program the same value for both snoop and no-snoop */
++	ltr = max_ltr << 16 | max_ltr;
++	pci_write_config_dword(nhi->pdev, VS_CAP_15, ltr);
++}
++
++static int icl_nhi_suspend(struct tb_nhi *nhi)
++{
++	int ret;
++
++	if (icl_nhi_is_device_connected(nhi))
++		return 0;
++
++	/*
++	 * If there is no device connected we need to perform both: a
++	 * handshake through LC mailbox and force power down before
++	 * entering D3.
++	 */
++	icl_nhi_lc_mailbox_cmd(nhi, ICL_LC_PREPARE_FOR_RESET);
++	ret = icl_nhi_lc_mailbox_cmd_complete(nhi, ICL_LC_MAILBOX_TIMEOUT);
++	if (ret)
++		return ret;
++
++	return icl_nhi_force_power(nhi, false);
++}
++
++static int icl_nhi_suspend_noirq(struct tb_nhi *nhi, bool wakeup)
++{
++	enum icl_lc_mailbox_cmd cmd;
++
++	if (!pm_suspend_via_firmware())
++		return icl_nhi_suspend(nhi);
++
++	cmd = wakeup ? ICL_LC_GO2SX : ICL_LC_GO2SX_NO_WAKE;
++	icl_nhi_lc_mailbox_cmd(nhi, cmd);
++	return icl_nhi_lc_mailbox_cmd_complete(nhi, ICL_LC_MAILBOX_TIMEOUT);
++}
++
++static int icl_nhi_resume(struct tb_nhi *nhi)
++{
++	int ret;
++
++	ret = icl_nhi_force_power(nhi, true);
++	if (ret)
++		return ret;
++
++	icl_nhi_set_ltr(nhi);
++	return 0;
++}
++
++static void icl_nhi_shutdown(struct tb_nhi *nhi)
++{
++	icl_nhi_force_power(nhi, false);
++}
++
++const struct tb_nhi_ops icl_nhi_ops = {
++	.init = icl_nhi_resume,
++	.suspend_noirq = icl_nhi_suspend_noirq,
++	.resume_noirq = icl_nhi_resume,
++	.runtime_suspend = icl_nhi_suspend,
++	.runtime_resume = icl_nhi_resume,
++	.shutdown = icl_nhi_shutdown,
++};
+diff --git a/drivers/thunderbolt/nhi_regs.h b/drivers/thunderbolt/nhi_regs.h
+index a60bd98c1d04..0d4970dcef84 100644
+--- a/drivers/thunderbolt/nhi_regs.h
++++ b/drivers/thunderbolt/nhi_regs.h
+@@ -124,4 +124,41 @@ struct ring_desc {
+ #define REG_FW_STS_ICM_EN_INVERT	BIT(1)
+ #define REG_FW_STS_ICM_EN		BIT(0)
+ 
++/* ICL NHI VSEC registers */
++
++/* FW ready */
++#define VS_CAP_9			0xc8
++#define VS_CAP_9_FW_READY		BIT(31)
++/* UUID */
++#define VS_CAP_10			0xcc
++#define VS_CAP_11			0xd0
++/* LTR */
++#define VS_CAP_15			0xe0
++#define VS_CAP_16			0xe4
++/* TBT2PCIe */
++#define VS_CAP_18			0xec
++#define VS_CAP_18_DONE			BIT(0)
++/* PCIe2TBT */
++#define VS_CAP_19			0xf0
++#define VS_CAP_19_VALID			BIT(0)
++#define VS_CAP_19_CMD_SHIFT		1
++#define VS_CAP_19_CMD_MASK		GENMASK(7, 1)
++/* Force power */
++#define VS_CAP_22			0xfc
++#define VS_CAP_22_FORCE_POWER		BIT(1)
++#define VS_CAP_22_DMA_DELAY_MASK	GENMASK(31, 24)
++#define VS_CAP_22_DMA_DELAY_SHIFT	24
++
++/**
++ * enum icl_lc_mailbox_cmd - ICL specific LC mailbox commands
++ * @ICL_LC_GO2SX: Ask LC to enter Sx without wake
++ * @ICL_LC_GO2SX_NO_WAKE: Ask LC to enter Sx with wake
++ * @ICL_LC_PREPARE_FOR_RESET: Prepare LC for reset
++ */
++enum icl_lc_mailbox_cmd {
++	ICL_LC_GO2SX = 0x02,
++	ICL_LC_GO2SX_NO_WAKE = 0x03,
++	ICL_LC_PREPARE_FOR_RESET = 0x21,
++};
++
+ #endif
+diff --git a/drivers/thunderbolt/switch.c b/drivers/thunderbolt/switch.c
+index 5668a44e0653..410bf1bceeee 100644
+--- a/drivers/thunderbolt/switch.c
++++ b/drivers/thunderbolt/switch.c
+@@ -364,12 +364,14 @@ static int tb_switch_nvm_add(struct tb_switch *sw)
+ 		nvm->active = nvm_dev;
+ 	}
+ 
+-	nvm_dev = register_nvmem(sw, nvm->id, NVM_MAX_SIZE, false);
+-	if (IS_ERR(nvm_dev)) {
+-		ret = PTR_ERR(nvm_dev);
+-		goto err_nvm_active;
++	if (!sw->no_nvm_upgrade) {
++		nvm_dev = register_nvmem(sw, nvm->id, NVM_MAX_SIZE, false);
++		if (IS_ERR(nvm_dev)) {
++			ret = PTR_ERR(nvm_dev);
++			goto err_nvm_active;
++		}
++		nvm->non_active = nvm_dev;
+ 	}
+-	nvm->non_active = nvm_dev;
+ 
+ 	sw->nvm = nvm;
+ 	return 0;
+@@ -398,7 +400,8 @@ static void tb_switch_nvm_remove(struct tb_switch *sw)
+ 	if (!nvm->authenticating)
+ 		nvm_clear_auth_status(sw);
+ 
+-	nvmem_unregister(nvm->non_active);
++	if (nvm->non_active)
++		nvmem_unregister(nvm->non_active);
+ 	if (nvm->active)
+ 		nvmem_unregister(nvm->active);
+ 	ida_simple_remove(&nvm_ida, nvm->id);
+@@ -611,8 +614,14 @@ static int tb_init_port(struct tb_port *port)
+ 	int cap;
+ 
+ 	res = tb_port_read(port, &port->config, TB_CFG_PORT, 0, 8);
+-	if (res)
++	if (res) {
++		if (res == -ENODEV) {
++			tb_dbg(port->sw->tb, " Port %d: not implemented\n",
++			       port->port);
++			return 0;
++		}
+ 		return res;
++	}
+ 
+ 	/* Port 0 is the switch itself and has no PHY. */
+ 	if (port->config.type == TB_TYPE_PORT && port->port != 0) {
+@@ -1331,14 +1340,29 @@ static umode_t switch_attr_is_visible(struct kobject *kobj,
+ 	struct device *dev = container_of(kobj, struct device, kobj);
+ 	struct tb_switch *sw = tb_to_switch(dev);
+ 
+-	if (attr == &dev_attr_key.attr) {
++	if (attr == &dev_attr_device.attr) {
++		if (!sw->device)
++			return 0;
++	} else if (attr == &dev_attr_device_name.attr) {
++		if (!sw->device_name)
++			return 0;
++	} else if (attr == &dev_attr_vendor.attr)  {
++		if (!sw->vendor)
++			return 0;
++	} else if (attr == &dev_attr_vendor_name.attr)  {
++		if (!sw->vendor_name)
++			return 0;
++	} else if (attr == &dev_attr_key.attr) {
+ 		if (tb_route(sw) &&
+ 		    sw->tb->security_level == TB_SECURITY_SECURE &&
+ 		    sw->security_level == TB_SECURITY_SECURE)
+ 			return attr->mode;
+ 		return 0;
+-	} else if (attr == &dev_attr_nvm_authenticate.attr ||
+-		   attr == &dev_attr_nvm_version.attr) {
++	} else if (attr == &dev_attr_nvm_authenticate.attr) {
++		if (sw->dma_port && !sw->no_nvm_upgrade)
++			return attr->mode;
++		return 0;
++	} else if (attr == &dev_attr_nvm_version.attr) {
+ 		if (sw->dma_port)
+ 			return attr->mode;
+ 		return 0;
+@@ -1446,6 +1470,8 @@ static int tb_switch_get_generation(struct tb_switch *sw)
+ 	case PCI_DEVICE_ID_INTEL_TITAN_RIDGE_2C_BRIDGE:
+ 	case PCI_DEVICE_ID_INTEL_TITAN_RIDGE_4C_BRIDGE:
+ 	case PCI_DEVICE_ID_INTEL_TITAN_RIDGE_DD_BRIDGE:
++	case PCI_DEVICE_ID_INTEL_ICL_NHI0:
++	case PCI_DEVICE_ID_INTEL_ICL_NHI1:
+ 		return 3;
+ 
+ 	default:
+@@ -1689,13 +1715,17 @@ static int tb_switch_add_dma_port(struct tb_switch *sw)
+ 		break;
+ 	}
+ 
+-	if (sw->no_nvm_upgrade)
++	/* Root switch DMA port requires running firmware */
++	if (!tb_route(sw) && sw->config.enabled)
+ 		return 0;
+ 
+ 	sw->dma_port = dma_port_alloc(sw);
+ 	if (!sw->dma_port)
+ 		return 0;
+ 
++	if (sw->no_nvm_upgrade)
++		return 0;
++
+ 	/*
+ 	 * Check status of the previous flash authentication. If there
+ 	 * is one we need to power cycle the switch in any case to make
+diff --git a/drivers/thunderbolt/tb_msgs.h b/drivers/thunderbolt/tb_msgs.h
+index afbe1d29bb03..4b641e4ee0c5 100644
+--- a/drivers/thunderbolt/tb_msgs.h
++++ b/drivers/thunderbolt/tb_msgs.h
+@@ -104,10 +104,11 @@ enum icm_pkg_code {
+ };
+ 
+ enum icm_event_code {
+-	ICM_EVENT_DEVICE_CONNECTED = 3,
+-	ICM_EVENT_DEVICE_DISCONNECTED = 4,
+-	ICM_EVENT_XDOMAIN_CONNECTED = 6,
+-	ICM_EVENT_XDOMAIN_DISCONNECTED = 7,
++	ICM_EVENT_DEVICE_CONNECTED = 0x3,
++	ICM_EVENT_DEVICE_DISCONNECTED = 0x4,
++	ICM_EVENT_XDOMAIN_CONNECTED = 0x6,
++	ICM_EVENT_XDOMAIN_DISCONNECTED = 0x7,
++	ICM_EVENT_RTD3_VETO = 0xa,
+ };
+ 
+ struct icm_pkg_header {
+@@ -463,6 +464,13 @@ struct icm_tr_pkg_disconnect_xdomain_response {
+ 	uuid_t remote_uuid;
+ };
+ 
++/* Ice Lake messages */
++
++struct icm_icl_event_rtd3_veto {
++	struct icm_pkg_header hdr;
++	u32 veto_reason;
++};
++
+ /* XDomain messages */
+ 
+ struct tb_xdomain_header {
+diff --git a/drivers/thunderbolt/tunnel.c b/drivers/thunderbolt/tunnel.c
+index 31d0234837e4..5a99234826e7 100644
+--- a/drivers/thunderbolt/tunnel.c
++++ b/drivers/thunderbolt/tunnel.c
+@@ -211,7 +211,7 @@ struct tb_tunnel *tb_tunnel_alloc_pci(struct tb *tb, struct tb_port *up,
+ 		return NULL;
+ 	}
+ 	tb_pci_init_path(path);
+-	tunnel->paths[TB_PCI_PATH_UP] = path;
++	tunnel->paths[TB_PCI_PATH_DOWN] = path;
+ 
+ 	path = tb_path_alloc(tb, up, TB_PCI_HOPID, down, TB_PCI_HOPID, 0,
+ 			     "PCIe Up");
+@@ -220,7 +220,7 @@ struct tb_tunnel *tb_tunnel_alloc_pci(struct tb *tb, struct tb_port *up,
+ 		return NULL;
+ 	}
+ 	tb_pci_init_path(path);
+-	tunnel->paths[TB_PCI_PATH_DOWN] = path;
++	tunnel->paths[TB_PCI_PATH_UP] = path;
+ 
+ 	return tunnel;
+ }
+diff --git a/drivers/thunderbolt/xdomain.c b/drivers/thunderbolt/xdomain.c
+index 5118d46702d5..4e17a7c7bf0a 100644
+--- a/drivers/thunderbolt/xdomain.c
++++ b/drivers/thunderbolt/xdomain.c
+@@ -636,7 +636,7 @@ static ssize_t key_show(struct device *dev, struct device_attribute *attr,
+ 	 * It should be null terminated but anything else is pretty much
+ 	 * allowed.
+ 	 */
+-	return sprintf(buf, "%*pEp\n", (int)strlen(svc->key), svc->key);
++	return sprintf(buf, "%*pE\n", (int)strlen(svc->key), svc->key);
+ }
+ static DEVICE_ATTR_RO(key);
+ 
+diff --git a/include/linux/thunderbolt.h b/include/linux/thunderbolt.h
+index 2d7e012db03f..ece782ef5466 100644
+--- a/include/linux/thunderbolt.h
++++ b/include/linux/thunderbolt.h
+@@ -429,6 +429,7 @@ static inline struct tb_xdomain *tb_service_parent(struct tb_service *svc)
+  * @lock: Must be held during ring creation/destruction. Is acquired by
+  *	  interrupt_work when dispatching interrupts to individual rings.
+  * @pdev: Pointer to the PCI device
++ * @ops: NHI specific optional ops
+  * @iobase: MMIO space of the NHI
+  * @tx_rings: All Tx rings available on this host controller
+  * @rx_rings: All Rx rings available on this host controller
+@@ -442,6 +443,7 @@ static inline struct tb_xdomain *tb_service_parent(struct tb_service *svc)
+ struct tb_nhi {
+ 	spinlock_t lock;
+ 	struct pci_dev *pdev;
++	const struct tb_nhi_ops *ops;
+ 	void __iomem *iobase;
+ 	struct tb_ring **tx_rings;
+ 	struct tb_ring **rx_rings;
