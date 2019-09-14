@@ -1,6 +1,6 @@
 # Dell XPS 7390 2-in-1 Manjaro Linux Fixes
 
-This repository allows you to build a custom kernel that fixes issues with the Dell XPS 7390 on Linux.
+This repository allows you to build a custom kernel that fixes issues with the Dell XPS 7390 2-in-1 on Linux.
 
 Usage:
 1. Install Manjaro on your system using ```noapic``` kernel parameter.
