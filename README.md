@@ -3,17 +3,19 @@
 This repository allows you to build a custom kernel that fixes issues with the Dell XPS 7390 on Linux.
 
 Usage:
-Install Manjaro on your system using ```noapic``` kernel parameter.
+1. Install Manjaro on your system using ```noapic``` kernel parameter.
 
-Get latest linux firmware package from 
+2. Get latest linux firmware package from 
 ```https://git.kernel.org/pub/scm/linux/kernel/git/firmware/linux-firmware.git/```
 and copy the intel files into ```/lib/firmware/intel``` on your local system (fixes bluetooth).
 
-Clone this repo
+3. Clone this repo
 
-Run ```makepkg -s``` to build the kernel packages.
+4. Run ```makepkg -s``` to build the kernel packages.
 
-Install packages.
+5. Install the packages that were built.
+
+6. Reboot with new kernel.
 
 ## What's still not working?
 - Webcam
