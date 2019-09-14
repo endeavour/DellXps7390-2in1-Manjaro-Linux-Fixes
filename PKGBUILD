@@ -8,7 +8,7 @@
 
 pkgbase=linux53
 pkgname=('linux53' 'linux53-headers')
-_kernelname=-MANJARO
+_kernelname=-MANJARO-DELLXPS7930-2IN1
 _basekernel=5.3
 _basever=53
 _aufs=20190812
