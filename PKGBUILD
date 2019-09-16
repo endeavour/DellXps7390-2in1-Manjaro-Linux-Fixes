@@ -13,12 +13,12 @@ _basekernel=5.3
 _basever=53
 _aufs=20190812
 _sub=0
-_rc=rc8
-_commit=f74c2bb98776e2de508f4d607cd519873065118e
+_rc=rc9
+_commit=4d856f72c10ecb060868ed10ff1b1453943fc6c8
 _shortcommit=${_rc}.d0908.g${_commit:0:7}
-pkgver=${_basekernel}${_shortcommit}
-#pkgver=${_basekernel}.${_sub}
-pkgrel=1
+#pkgver=${_basekernel}${_shortcommit}
+pkgver=${_basekernel}.${_sub}
+pkgrel=0
 arch=('i686' 'x86_64')
 url="http://www.kernel.org/"
 license=('GPL2')
@@ -63,7 +63,7 @@ source=(#"https://www.kernel.org/pub/linux/kernel/v5.x/linux-${_basekernel}.tar.
         '0011-bootsplash.patch'
         '0012-bootsplash.patch'
         '0013-bootsplash.patch')
-sha256sums=('d3ac631988c3fa59316cb902f30e7b26f1d6839d9a46f2581830e384651d61ad'
+sha256sums=('d3d49f2f7c06dd5acfd0f3337690e10eb2a3401be12154d470b41c255e603b3b'
             'a4f124f673c7fb39ef53a487a635a76e51ddbe98c08c08f6a72d4039be334a33'
             'f5903377d29fc538af98077b81982efdc091a8c628cb85566e88e1b5018f12bf'
             'b44d81446d8b53d5637287c30ae3eb64cae0078c3fbc45fcf1081dd6699818b5'
