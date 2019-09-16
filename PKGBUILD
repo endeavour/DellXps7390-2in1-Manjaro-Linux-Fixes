@@ -67,6 +67,9 @@ source=(#"https://www.kernel.org/pub/linux/kernel/v5.x/linux-${_basekernel}.tar.
         'dellxps-fixlpss.patch'
         'dellxps-fixsuspend.patch'
         'dellxps-icelake-thunderbolt.patch'
+        'dellxps-pciehp.patch'
+        'dellxps-watchdog1.patch'
+        'dellxps-watchdog2.patch'
         )
 sha256sums=('d3ac631988c3fa59316cb902f30e7b26f1d6839d9a46f2581830e384651d61ad'
             'a4f124f673c7fb39ef53a487a635a76e51ddbe98c08c08f6a72d4039be334a33'
@@ -104,7 +107,10 @@ sha256sums=('d3ac631988c3fa59316cb902f30e7b26f1d6839d9a46f2581830e384651d61ad'
             '035ea4b2a7621054f4560471f45336b981538a40172d8f17285910d4e0e0b3ef'
             'e74ace0fe483192dc2dc3174862388688c7a0175c286678cc9a785db5bdf2828'
             'e938d089f27298054d97364984233b36461950ad539625f4565fbbca848c4aab'
-            '29caa9e534c2e8ed068662090178d08b86e9d76c0e4fe2a705a5d9b8fca8e0c2')
+            '29caa9e534c2e8ed068662090178d08b86e9d76c0e4fe2a705a5d9b8fca8e0c2'
+            '0706518daee7e44301de980e2e5bf29c00e1bcbf48ba24d2d72ccae0f5911e3d'
+            '09c180063d00386a7bf50523442b238791cf45e6a969a4ec6fc4b0e62899cfe8'
+            'a8bab1dcee88bc61aee3ed21140f05e0798e7327602f782f769b55588fcaaff9')
 prepare() {
   #mv "${srcdir}/linux-stable-rc-${_commit}" "${srcdir}/linux-${_basekernel}"
   mv "${srcdir}/linux-${_commit}" "${srcdir}/linux-${_basekernel}"
