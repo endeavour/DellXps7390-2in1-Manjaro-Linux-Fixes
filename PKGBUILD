@@ -245,7 +245,7 @@ package_linux54() {
   true && install=${install}.pkg
 
   # install mkinitcpio preset file
-  sed "${_subst}" ${srcdir}/linux53.preset |
+  sed "${_subst}" ${srcdir}/${pkgbase}.preset |
     install -Dm644 /dev/stdin "${pkgdir}/etc/mkinitcpio.d/${pkgbase}.preset"
 
   # install pacman hooks
