@@ -11,11 +11,11 @@ pkgname=('linux54' 'linux54-headers')
 _kernelname=-MANJARO
 _basekernel=5.4
 _basever=54
-_aufs=20190812
+_aufs=20190909
 _sub=0
 _rc=rc0
-_commit=ad062195731bea1624ce7160e79e0fcdaa25c1b5
-_shortcommit=${_rc}.d0917.g${_commit:0:7}
+_commit=b41dae061bbd722b9d7fa828f35d22035b218e18
+_shortcommit=${_rc}.d0919.g${_commit:0:7}
 pkgver=${_basekernel}${_shortcommit}
 #pkgver=${_basekernel}.${_sub}
 pkgrel=1
@@ -62,20 +62,20 @@ source=(#"https://www.kernel.org/pub/linux/kernel/v5.x/linux-${_basekernel}.tar.
         '0011-bootsplash.patch'
         '0012-bootsplash.patch'
         '0013-bootsplash.patch')
-sha256sums=('4a6249eadc5c1fef85886b76e6d77cbb6782eba52c00e29fdc4bcc7c37fcbe53'
-            '06fa4133b9ac11dada33c6cb8d3fc684f5cdab79a5610747614478d46af42eed'
+sha256sums=('8e390335a21865361e5034bf5f406d89c0b30cfa8445b4f1a40b40a06888d5d3'
+            'd972c3082d7bb7ec400214727b9636af26da9145e4070d71ac6f067eba707e82'
             'f5903377d29fc538af98077b81982efdc091a8c628cb85566e88e1b5018f12bf'
             'b44d81446d8b53d5637287c30ae3eb64cae0078c3fbc45fcf1081dd6699818b5'
             '43942683a7ff01b180dff7f3de2db4885d43ab3d4e7bd0e1918c3aaf2ee061f4'
             'ae2e95db94ef7176207c690224169594d49445e04249d2499e9d2fbc117a0b21'
             '90831589b7ab43d6fab11bfa3ad788db14ba77ea4dc03d10ee29ad07194691e1'
-            '14f1c0e9adfd8e9e9e4601d0d76adf186d52855eae91eee83c9f1aa449808799'
-            '29bb58757da5a4bd871c85d83427e2ccb4d6fddafc768718ea077eadea372ed4'
-            '789a933080a85120dbeb12de2f243498b5e454128f2cf77dd16d47a27b235f79'
-            'c0335e5d3b1fe5263742a6d3ac406e02eb230e06a75bb8bf5ad84676f4e42e63'
-            '6d30c7ae416ec2c4632f44acd7d94baa842937cc45e6b50c6cff8ae1bad08619'
-            '70808c260372548760c306ac36cb62c186b5ab50c67a2cad6678061730cc8e38'
-            'a194c5eace0a38466ac34548c637297e949bb85abb61a43bab6187eb499e3aad'
+            '0e39cb19e8096404d5328523be3d1670174a8b44f96b43f10331279aa5eef249'
+            '87b3b4a496af7f7213c693468810054c7c44703628490c62d52bedd8cae7a66a'
+            'a6476d1ffc5939efc551cf6c5bbf729a693837d26f527a48ff9325958642b374'
+            '16e981ac6beedd3bc264e03c1e8d25681d8ad9e5ad469e3630b3e2e6ba76e8ec'
+            '3654ef33535c9136a5ef318270423b811019e32166a3812ca913e64a6d0c1746'
+            '1060cceb84a7d178d4a0e1946d06055ddab0b5b110d385e9d087557143c6659f'
+            '55dc8df3a3d3e248eb93f5878f567428f77acb72f6243934bd6980cfede3b6ca'
             'e2d75e11a2c220e5d3a450bb226e7e19d62a871764da5f76034fbc135fe6c749'
             '37b86ca3de148a34258e3176dbf41488d9dbd19e93adbd22a062b3c41332ce85'
             '4b4146786e68af3bd49e9fabdbc92232e51cb2da179ba8037287b96d8addd17c'
