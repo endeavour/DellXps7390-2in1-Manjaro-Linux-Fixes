@@ -164,7 +164,6 @@ prepare() {
 
   # apply Dell XPS patches
   patch -Np1 -i "${srcdir}/dellxps-fixlpss.patch"
-  patch -Np1 -i "${srcdir}/dellxps-fixsuspend.patch"
   patch -Np1 -i "${srcdir}/dellxps-icelake-thunderbolt.patch"
   patch -Np1 -i "${srcdir}/dellxps-watchdog1.patch"
   patch -Np1 -i "${srcdir}/dellxps-watchdog2.patch"  
