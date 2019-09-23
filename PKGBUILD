@@ -12,22 +12,16 @@ _kernelname=-MANJARO-DELLXPS7930-2IN1
 _basekernel=5.3
 _basever=53
 _aufs=20190812
-_sub=0
-_rc=rc9
-_commit=4d856f72c10ecb060868ed10ff1b1453943fc6c8
-_shortcommit=${_rc}.d0908.g${_commit:0:7}
-#pkgver=${_basekernel}${_shortcommit}
+_sub=1
 pkgver=${_basekernel}.${_sub}
-pkgrel=0
+pkgrel=1
 arch=('i686' 'x86_64')
 url="http://www.kernel.org/"
 license=('GPL2')
 makedepends=('xmlto' 'docbook-xsl' 'kmod' 'inetutils' 'bc' 'elfutils' 'git')
 options=('!strip')
-source=(#"https://www.kernel.org/pub/linux/kernel/v5.x/linux-${_basekernel}.tar.xz"
-        #"https://www.kernel.org/pub/linux/kernel/v5.x/patch-${pkgver}.xz"
-        #https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux-stable-rc.git/snapshot/linux-stable-rc-$_commit.tar.gz
-        "linux-${pkgver}.tar.gz::https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/snapshot/linux-$_commit.tar.gz"
+source=("https://www.kernel.org/pub/linux/kernel/v5.x/linux-${_basekernel}.tar.xz"
+        "https://www.kernel.org/pub/linux/kernel/v5.x/patch-${pkgver}.xz"
         # the main kernel config files
         'config.x86_64' 'config' 'config.aufs'
         "${pkgbase}.preset" # standard config files for mkinitcpio ramdisk
@@ -49,6 +43,7 @@ source=(#"https://www.kernel.org/pub/linux/kernel/v5.x/linux-${_basekernel}.tar.
         '0003-apparmor-fix-use-after-free-in-sk_peer_label.patch::https://gitlab.com/apparmor/apparmor-kernel/commit/9ae046ed7b54b01078e33227fa266282c41f981d.patch'
         '0004-apparmor-fix-apparmor-mediating-locking-non-fs-unix-sockets.patch::https://gitlab.com/apparmor/apparmor-kernel/commit/b6a5dfbaa728854457570bf72b693a89550cc1f8.patch'
         '0001-amd_nb-add-pci-device-ids-for-family-17h-model-70h.patch::https://git.kernel.org/pub/scm/linux/kernel/git/next/linux-next.git/patch/?id=3fd670c3ff9528dc5cc903cb3dad8e2cd4650095'
+        '0002-amd_nb-add-pci-device-ids-for-family-17h-model-70h.patch::https://git.kernel.org/pub/scm/linux/kernel/git/next/linux-next.git/patch/?id=f80052919427ffb9103c64ca9c1e1aea13fd63bc'
         # Bootsplash
         '0001-bootsplash.patch'
         '0002-bootsplash.patch'
@@ -70,7 +65,8 @@ source=(#"https://www.kernel.org/pub/linux/kernel/v5.x/linux-${_basekernel}.tar.
         'dellxps-watchdog1.patch'
         'dellxps-watchdog2.patch'
         )
-sha256sums=('d3d49f2f7c06dd5acfd0f3337690e10eb2a3401be12154d470b41c255e603b3b'
+sha256sums=('78f3c397513cf4ff0f96aa7d09a921d003e08fa97c09e0bb71d88211b40567b2'
+            '84cf9ac904a4af41c23b1830ea98872e43f014fe7daba3e295e45e7381024d34'
             'e4148fa685c20069bae1af2e75b33e458334b4eb1532b598f773889b9d99bf45'
             'f5903377d29fc538af98077b81982efdc091a8c628cb85566e88e1b5018f12bf'
             'b44d81446d8b53d5637287c30ae3eb64cae0078c3fbc45fcf1081dd6699818b5'
@@ -91,6 +87,7 @@ sha256sums=('d3d49f2f7c06dd5acfd0f3337690e10eb2a3401be12154d470b41c255e603b3b'
             '749ac28edc2cd2ac3a4406becc13327a1ece3445196ca41cbfca460454fa01bf'
             'e55e88fe22256f079f5ac7b015c2d510912cae6f48a27a0f768b8f5f6acfc11b'
             '4690504af84e8c493132e8b7b1be57a0a0f940c420b05c14d4a17aef0ccbc16a'
+            '2bd3bd14537be9269e731174cf1b98cfba67f3c6e6e534ed9e21757e53493362'
             'a504f6cf84094e08eaa3cc5b28440261797bf4f06f04993ee46a20628ff2b53c'
             'e096b127a5208f56d368d2cb938933454d7200d70c86b763aa22c38e0ddb8717'
             '8c1c880f2caa9c7ae43281a35410203887ea8eae750fe8d360d0c8bf80fcc6e0'
@@ -110,12 +107,10 @@ sha256sums=('d3d49f2f7c06dd5acfd0f3337690e10eb2a3401be12154d470b41c255e603b3b'
             '09c180063d00386a7bf50523442b238791cf45e6a969a4ec6fc4b0e62899cfe8'
             'a8bab1dcee88bc61aee3ed21140f05e0798e7327602f782f769b55588fcaaff9')
 prepare() {
-  #mv "${srcdir}/linux-stable-rc-${_commit}" "${srcdir}/linux-${_basekernel}"
-  mv "${srcdir}/linux-${_commit}" "${srcdir}/linux-${_basekernel}"
   cd "${srcdir}/linux-${_basekernel}"
 
   # add upstream patch
-  #patch -p1 -i "${srcdir}/patch-${pkgver}"
+  patch -p1 -i "${srcdir}/patch-${pkgver}"
 
   # add latest fixes from stable queue, if needed
   # http://git.kernel.org/?p=linux/kernel/git/stable/stable-queue.git
@@ -135,6 +130,7 @@ prepare() {
   # add PCI device IDs for family 17h, model 70h
   # https://forum.manjaro.org/t/99703
   patch -Np1 -i "${srcdir}/0001-amd_nb-add-pci-device-ids-for-family-17h-model-70h.patch"
+  patch -Np1 -i "${srcdir}/0002-amd_nb-add-pci-device-ids-for-family-17h-model-70h.patch"
 
   # Add bootsplash - http://lkml.iu.edu/hypermail/linux/kernel/1710.3/01542.html
   patch -Np1 -i "${srcdir}/0001-bootsplash.patch"
