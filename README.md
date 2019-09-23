@@ -4,6 +4,7 @@ This repository allows you to build a custom kernel that fixes issues with the D
 
 Usage:
 1. Install Manjaro on your system using ```noapic``` kernel parameter.
+  - if can't find the hard drive, boot into BIOS and under `System Configuration` change `SATA Operation` from `RAID On` to `AHCI`. This will make your windows partitions (if any) unusable.
 
 2. Get latest linux firmware package from 
 ```https://git.kernel.org/pub/scm/linux/kernel/git/firmware/linux-firmware.git/```
