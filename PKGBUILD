@@ -61,7 +61,7 @@ source=("https://www.kernel.org/pub/linux/kernel/v5.x/linux-${_basekernel}.tar.x
         # Dell XPS 7930 2-in-1 fixes
         'dellxps-fixlpss.patch'
         'dellxps-icelake-thunderbolt.patch'
-        'dellxps-pciehp.patch'
+        'dellxps-suspend.patch'
         'dellxps-watchdog1.patch'
         'dellxps-watchdog2.patch'
         )
@@ -161,6 +161,7 @@ prepare() {
   # apply Dell XPS patches
   patch -Np1 -i "${srcdir}/dellxps-fixlpss.patch"
   patch -Np1 -i "${srcdir}/dellxps-icelake-thunderbolt.patch"
+  patch -Np1 -i "${srcdir}/dellxps-suspend.patch"
   patch -Np1 -i "${srcdir}/dellxps-watchdog1.patch"
   patch -Np1 -i "${srcdir}/dellxps-watchdog2.patch"  
 
