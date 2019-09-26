@@ -25,5 +25,13 @@ and copy the intel files into ```/lib/firmware/intel``` on your local system (fi
 ## What's still not working?
 - Webcam
 
+## KDE Issues
+Fix for horizontal purple lines flashing on top few pixels of screen and inability to click/type into application launcher:
+
+```pamac remove xf86-video-intel``` then reboot.
+
+(purple lines still seem to appear on logon screen but once logged in they are fixed)
+
+
 Many thanks to the redditors for providing fixes:
 https://www.reddit.com/r/Dell/comments/cx0fkc/xps_13_2_in_1_7390_linux_boot_attempt/
