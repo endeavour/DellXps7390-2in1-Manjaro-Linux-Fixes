@@ -24,6 +24,7 @@ and copy the intel files into ```/lib/firmware/intel``` on your local system (fi
 
 ## What's still not working?
 - Webcam
+- Suspend isn't working properly (black screen / cursor when resuming, and mouse/kb inoperational) - possibly related to thunderbolt
 
 ## KDE Issues
 Fix for horizontal purple lines flashing on top few pixels of screen and inability to click/type into application launcher:
