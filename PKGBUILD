@@ -11,11 +11,11 @@ pkgname=('linux54' 'linux54-headers')
 _kernelname=-MANJARO
 _basekernel=5.4
 _basever=54
-_aufs=20190909
+_aufs=20190923
 _sub=0
 _rc=rc0
-_commit=b41dae061bbd722b9d7fa828f35d22035b218e18
-_shortcommit=${_rc}.d0919.g${_commit:0:7}
+_commit=aefcf2f4b58155d27340ba5f9ddbe9513da8286d
+_shortcommit=${_rc}.d0928.g${_commit:0:7}
 pkgver=${_basekernel}${_shortcommit}
 #pkgver=${_basekernel}.${_sub}
 pkgrel=1
@@ -62,18 +62,18 @@ source=(#"https://www.kernel.org/pub/linux/kernel/v5.x/linux-${_basekernel}.tar.
         '0011-bootsplash.patch'
         '0012-bootsplash.patch'
         '0013-bootsplash.patch')
-sha256sums=('8e390335a21865361e5034bf5f406d89c0b30cfa8445b4f1a40b40a06888d5d3'
-            'd972c3082d7bb7ec400214727b9636af26da9145e4070d71ac6f067eba707e82'
+sha256sums=('6be16d9451b67431a9a0d4cca605ff8170dc5ee2995e2bfa6de429f25e97f4b8'
+            '745fd5de097982b2226381021909e4f467e46d73f77e39f8ce6cb36c86f71179'
             'f5903377d29fc538af98077b81982efdc091a8c628cb85566e88e1b5018f12bf'
             'b44d81446d8b53d5637287c30ae3eb64cae0078c3fbc45fcf1081dd6699818b5'
             '43942683a7ff01b180dff7f3de2db4885d43ab3d4e7bd0e1918c3aaf2ee061f4'
             'ae2e95db94ef7176207c690224169594d49445e04249d2499e9d2fbc117a0b21'
             '90831589b7ab43d6fab11bfa3ad788db14ba77ea4dc03d10ee29ad07194691e1'
-            '0e39cb19e8096404d5328523be3d1670174a8b44f96b43f10331279aa5eef249'
-            '87b3b4a496af7f7213c693468810054c7c44703628490c62d52bedd8cae7a66a'
+            '6446785f9a4ecfbe785984fab552fa1c79db54067d9b9a72339292db68e7585b'
+            '7ff57fd146dc4c8f5fd37062e44cbf7e70164df5a684d3b4bb3e8a787c060503'
             'a6476d1ffc5939efc551cf6c5bbf729a693837d26f527a48ff9325958642b374'
             '16e981ac6beedd3bc264e03c1e8d25681d8ad9e5ad469e3630b3e2e6ba76e8ec'
-            '3654ef33535c9136a5ef318270423b811019e32166a3812ca913e64a6d0c1746'
+            'a44fb19196c2e63e2733a210358afb309f598d8155488424a8620ec7f309de08'
             '1060cceb84a7d178d4a0e1946d06055ddab0b5b110d385e9d087557143c6659f'
             '55dc8df3a3d3e248eb93f5878f567428f77acb72f6243934bd6980cfede3b6ca'
             'e2d75e11a2c220e5d3a450bb226e7e19d62a871764da5f76034fbc135fe6c749'
@@ -135,14 +135,14 @@ prepare() {
   git apply -p1 < "${srcdir}/0013-bootsplash.patch"
 
   # add aufs5 support
-  patch -Np1 -i "${srcdir}/aufs5.x-rcN-${_aufs}.patch"
-  patch -Np1 -i "${srcdir}/aufs5-base.patch"
-  patch -Np1 -i "${srcdir}/aufs5-kbuild.patch"
-  patch -Np1 -i "${srcdir}/aufs5-loopback.patch"
-  patch -Np1 -i "${srcdir}/aufs5-mmap.patch"
-  patch -Np1 -i "${srcdir}/aufs5-standalone.patch"
-  patch -Np1 -i "${srcdir}/tmpfs-idr.patch"
-  patch -Np1 -i "${srcdir}/vfs-ino.patch"
+#  patch -Np1 -i "${srcdir}/aufs5.x-rcN-${_aufs}.patch"
+#  patch -Np1 -i "${srcdir}/aufs5-base.patch"
+#  patch -Np1 -i "${srcdir}/aufs5-kbuild.patch"
+#  patch -Np1 -i "${srcdir}/aufs5-loopback.patch"
+#  patch -Np1 -i "${srcdir}/aufs5-mmap.patch"
+#  patch -Np1 -i "${srcdir}/aufs5-standalone.patch"
+#  patch -Np1 -i "${srcdir}/tmpfs-idr.patch"
+#  patch -Np1 -i "${srcdir}/vfs-ino.patch"
 
   if [ "${CARCH}" = "x86_64" ]; then
     cat "${srcdir}/config.x86_64" > ./.config
