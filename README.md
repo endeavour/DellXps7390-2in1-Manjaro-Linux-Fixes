@@ -22,9 +22,18 @@ and copy the intel files into ```/lib/firmware/intel``` on your local system (fi
 
 6. Reboot with new kernel.
 
+## Power management (Suspend issues)
+Thunderbolt causes suspend to hang the system (even if nothing is plugged in). This can be fixed by adding a script to disable thunderbolt before suspend and re-enable it afterwards.
+
+Copy ```scripts/custom-thunderbolt``` from this repository into ```/lib/systemd/system-sleep/custom-thunderbolt``` and make it executable:
+```
+cp scripts/custom-thunderbolt /lib/systemd/system-sleep/custom-thunderbolt
+chown root:root /lib/systemd/system-sleep/custom-thunderbolt
+chmod +x /lib/systemd/system-sleep/custom-thunderbolt
+```
+
 ## What's still not working?
 - Webcam
-- Suspend isn't working properly (black screen / cursor when resuming, and mouse/kb inoperational) - possibly related to thunderbolt
 
 ## KDE Issues
 Fix for horizontal purple lines flashing on top few pixels of screen and inability to click/type into application launcher:
@@ -34,5 +43,5 @@ Fix for horizontal purple lines flashing on top few pixels of screen and inabili
 (purple lines still seem to appear on logon screen but once logged in they are fixed)
 
 
-Many thanks to the redditors for providing fixes:
+Many thanks to the redditors, particularly silverhaul, for providing fixes:
 https://www.reddit.com/r/Dell/comments/cx0fkc/xps_13_2_in_1_7390_linux_boot_attempt/
