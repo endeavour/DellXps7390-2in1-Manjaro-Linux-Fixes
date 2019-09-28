@@ -64,6 +64,7 @@ source=("https://www.kernel.org/pub/linux/kernel/v5.x/linux-${_basekernel}.tar.x
         'dellxps-suspend.patch'
         'dellxps-watchdog1.patch'
         'dellxps-watchdog2.patch'
+        'dellxps-icelake-screencorruptionfix.patch'
         )
 sha256sums=('78f3c397513cf4ff0f96aa7d09a921d003e08fa97c09e0bb71d88211b40567b2'
             '84cf9ac904a4af41c23b1830ea98872e43f014fe7daba3e295e45e7381024d34'
@@ -105,7 +106,8 @@ sha256sums=('78f3c397513cf4ff0f96aa7d09a921d003e08fa97c09e0bb71d88211b40567b2'
             '29caa9e534c2e8ed068662090178d08b86e9d76c0e4fe2a705a5d9b8fca8e0c2'
             '0706518daee7e44301de980e2e5bf29c00e1bcbf48ba24d2d72ccae0f5911e3d'
             '09c180063d00386a7bf50523442b238791cf45e6a969a4ec6fc4b0e62899cfe8'
-            'a8bab1dcee88bc61aee3ed21140f05e0798e7327602f782f769b55588fcaaff9')
+            'a8bab1dcee88bc61aee3ed21140f05e0798e7327602f782f769b55588fcaaff9'
+            '2eb0c8b27e09e086e37cc9023440611fbfe2f72578bb380b653f6aa14908840a')
 prepare() {
   cd "${srcdir}/linux-${_basekernel}"
 
@@ -163,7 +165,8 @@ prepare() {
   patch -Np1 -i "${srcdir}/dellxps-icelake-thunderbolt.patch"
   patch -Np1 -i "${srcdir}/dellxps-suspend.patch"
   patch -Np1 -i "${srcdir}/dellxps-watchdog1.patch"
-  patch -Np1 -i "${srcdir}/dellxps-watchdog2.patch"  
+  patch -Np1 -i "${srcdir}/dellxps-watchdog2.patch"
+  patch -Np1 -i "${srcdir}/dellxps-icelake-screencorruptionfix.patch"
 
   if [ "${CARCH}" = "x86_64" ]; then
     cat "${srcdir}/config.x86_64" > ./.config

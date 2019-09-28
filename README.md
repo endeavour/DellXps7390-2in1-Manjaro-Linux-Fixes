@@ -33,11 +33,9 @@ chmod +x /lib/systemd/system-sleep/custom-thunderbolt
 ```
 
 ## KDE Issues
-Fix for horizontal purple lines flashing on top few pixels of screen and inability to click/type into application launcher:
+Inability to click/type into application launcher - switch to modesetting driver by running
 
 ```pamac remove xf86-video-intel``` then reboot.
-
-(purple lines still seem to appear on logon screen but once logged in they are fixed)
 
 ## What's still not working?
 - Webcam
