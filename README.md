@@ -32,9 +32,6 @@ chown root:root /lib/systemd/system-sleep/custom-thunderbolt
 chmod +x /lib/systemd/system-sleep/custom-thunderbolt
 ```
 
-## What's still not working?
-- Webcam
-
 ## KDE Issues
 Fix for horizontal purple lines flashing on top few pixels of screen and inability to click/type into application launcher:
 
@@ -42,6 +39,9 @@ Fix for horizontal purple lines flashing on top few pixels of screen and inabili
 
 (purple lines still seem to appear on logon screen but once logged in they are fixed)
 
+## What's still not working?
+- Webcam
 
+# Acknowledgements
 Many thanks to the redditors, particularly silverhaul, for providing fixes:
 https://www.reddit.com/r/Dell/comments/cx0fkc/xps_13_2_in_1_7390_linux_boot_attempt/
