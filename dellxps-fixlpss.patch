@@ -1,0 +1,71 @@
+diff --git a/drivers/mfd/intel-lpss.c b/drivers/mfd/intel-lpss.c
+index 277f48f1cc1c..06106c9320bb 100644
+--- a/drivers/mfd/intel-lpss.c
++++ b/drivers/mfd/intel-lpss.c
+@@ -395,7 +395,7 @@ int intel_lpss_probe(struct device *dev,
+ 	if (!lpss)
+ 		return -ENOMEM;
+ 
+-	lpss->priv = devm_ioremap(dev, info->mem->start + LPSS_PRIV_OFFSET,
++	lpss->priv = devm_ioremap_uc(dev, info->mem->start + LPSS_PRIV_OFFSET,
+ 				  LPSS_PRIV_SIZE);
+ 	if (!lpss->priv)
+ 		return -ENOMEM;
+diff --git a/include/linux/io.h b/include/linux/io.h
+index accac822336a..a59834bc0a11 100644
+--- a/include/linux/io.h
++++ b/include/linux/io.h
+@@ -64,6 +64,8 @@ static inline void devm_ioport_unmap(struct device *dev, void __iomem *addr)
+ 
+ void __iomem *devm_ioremap(struct device *dev, resource_size_t offset,
+ 			   resource_size_t size);
++void __iomem *devm_ioremap_uc(struct device *dev, resource_size_t offset,
++				   resource_size_t size);
+ void __iomem *devm_ioremap_nocache(struct device *dev, resource_size_t offset,
+ 				   resource_size_t size);
+ void __iomem *devm_ioremap_wc(struct device *dev, resource_size_t offset,
+diff --git a/lib/devres.c b/lib/devres.c
+index 6a0e9bd6524a..ca4a18f71798 100644
+--- a/lib/devres.c
++++ b/lib/devres.c
+@@ -9,6 +9,7 @@
+ enum devm_ioremap_type {
+ 	DEVM_IOREMAP = 0,
+ 	DEVM_IOREMAP_NC,
++	DEVM_IOREMAP_UC,
+ 	DEVM_IOREMAP_WC,
+ };
+ 
+@@ -39,6 +40,9 @@ static void __iomem *__devm_ioremap(struct device *dev, resource_size_t offset,
+ 	case DEVM_IOREMAP_NC:
+ 		addr = ioremap_nocache(offset, size);
+ 		break;
++	case DEVM_IOREMAP_UC:
++		addr = ioremap_uc(offset, size);
++		break;
+ 	case DEVM_IOREMAP_WC:
+ 		addr = ioremap_wc(offset, size);
+ 		break;
+@@ -68,6 +72,22 @@ void __iomem *devm_ioremap(struct device *dev, resource_size_t offset,
+ }
+ EXPORT_SYMBOL(devm_ioremap);
+ 
++/**
++ * devm_ioremap_uc - Managed ioremap_uc()
++ * @dev: Generic device to remap IO address for
++ * @offset: Resource address to map
++ * @size: Size of map
++ *
++ * Managed ioremap_uc().  Map is automatically unmapped on driver detach.
++ */
++void __iomem *devm_ioremap_uc(struct device *dev, resource_size_t offset,
++			      resource_size_t size)
++{
++	return __devm_ioremap(dev, offset, size, DEVM_IOREMAP_UC);
++}
++EXPORT_SYMBOL(devm_ioremap_uc);
++
++
+ /**
+  * devm_ioremap_nocache - Managed ioremap_nocache()
+  * @dev: Generic device to remap IO address for

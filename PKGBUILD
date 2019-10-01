@@ -61,7 +61,11 @@ source=(#"https://www.kernel.org/pub/linux/kernel/v5.x/linux-${_basekernel}.tar.
         '0010-bootsplash.patch'
         '0011-bootsplash.patch'
         '0012-bootsplash.patch'
-        '0013-bootsplash.patch')
+        '0013-bootsplash.patch'
+        # Dell XPS 7930 2-in-1 fixes
+        'dellxps-fixlpss.patch'
+        'dellxps-suspend.patch'
+        'dellxps-icelake-screencorruptionfix.patch')
 sha256sums=('bdf6595fb2c9be6289453e2cadbe922c01e4fba935e8ef75177e08cd06ba9202'
             '745fd5de097982b2226381021909e4f467e46d73f77e39f8ce6cb36c86f71179'
             'f5903377d29fc538af98077b81982efdc091a8c628cb85566e88e1b5018f12bf'
@@ -94,7 +98,10 @@ sha256sums=('bdf6595fb2c9be6289453e2cadbe922c01e4fba935e8ef75177e08cd06ba9202'
             'e9f22cbb542591087d2d66dc6dc912b1434330ba3cd13d2df741d869a2c31e89'
             '27471eee564ca3149dd271b0817719b5565a9594dc4d884fe3dc51a5f03832bc'
             '60e295601e4fb33d9bf65f198c54c7eb07c0d1e91e2ad1e0dd6cd6e142cb266d'
-            '035ea4b2a7621054f4560471f45336b981538a40172d8f17285910d4e0e0b3ef')
+            '035ea4b2a7621054f4560471f45336b981538a40172d8f17285910d4e0e0b3ef'
+            'd43a8a6b0a8847ad3cb423bdf084f42198a76d96532c3856d70b2cb005979aec'
+            '0706518daee7e44301de980e2e5bf29c00e1bcbf48ba24d2d72ccae0f5911e3d'
+            '2eb0c8b27e09e086e37cc9023440611fbfe2f72578bb380b653f6aa14908840a')
 prepare() {
   #mv "${srcdir}/linux-stable-rc-${_commit}" "${srcdir}/linux-${_basekernel}"
   mv "${srcdir}/linux-${_commit}" "${srcdir}/linux-${_basekernel}"
@@ -143,6 +150,11 @@ prepare() {
 #  patch -Np1 -i "${srcdir}/aufs5-standalone.patch"
 #  patch -Np1 -i "${srcdir}/tmpfs-idr.patch"
 #  patch -Np1 -i "${srcdir}/vfs-ino.patch"
+
+  # apply Dell XPS patches
+  patch -Np1 -i "${srcdir}/dellxps-fixlpss.patch"
+  patch -Np1 -i "${srcdir}/dellxps-suspend.patch"
+  patch -Np1 -i "${srcdir}/dellxps-icelake-screencorruptionfix.patch"
 
   if [ "${CARCH}" = "x86_64" ]; then
     cat "${srcdir}/config.x86_64" > ./.config
