@@ -1,3 +1,9 @@
+# Kernel 5.4
+This branch is experimental.
+
+Known issues:
+Wifi stops working after resuming from suspend.
+
 # Dell XPS 7390 2-in-1 Manjaro Linux Fixes
 
 This repository allows you to build a custom kernel that fixes issues with the Dell XPS 7390 2-in-1 on Linux.
