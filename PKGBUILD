@@ -8,7 +8,7 @@
 
 pkgbase=linux54
 pkgname=('linux54' 'linux54-headers')
-_kernelname=-MANJARO
+_kernelname=-MANJARO-DELLXPS7390-2IN1
 _basekernel=5.4
 _basever=54
 _aufs=20190923
@@ -62,7 +62,7 @@ source=(#"https://www.kernel.org/pub/linux/kernel/v5.x/linux-${_basekernel}.tar.
         '0011-bootsplash.patch'
         '0012-bootsplash.patch'
         '0013-bootsplash.patch'
-        # Dell XPS 7930 2-in-1 fixes
+        # Dell XPS 7390 2-in-1 fixes
         'dellxps-fixlpss.patch'
         'dellxps-suspend.patch'
         'dellxps-icelake-screencorruptionfix.patch')
