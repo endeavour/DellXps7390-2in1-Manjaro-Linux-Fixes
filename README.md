@@ -45,6 +45,6 @@ Many thanks to the redditors, particularly silverhaul, for providing fixes:
 https://www.reddit.com/r/Dell/comments/cx0fkc/xps_13_2_in_1_7390_linux_boot_attempt/
 
 # Other distros
-Debian users might want to looks here instead:
+Debian users might want to look here instead:
 https://gitlab.com/emrose/xps13-7390_debian
 
