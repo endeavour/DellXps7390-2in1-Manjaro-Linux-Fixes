@@ -11,10 +11,10 @@ pkgname=('linux54' 'linux54-headers')
 _kernelname=-MANJARO
 _basekernel=5.4
 _basever=54
-_aufs=20190923
+_aufs=20191014
 _sub=0
-_rc=rc2
-_commit=da0c9ea146cbe92b832f1b0f694840ea8eb33cce
+_rc=rc3
+_commit=4f5cafb5cb8471e54afdc9054d973535614f7675
 _shortcommit=${_rc}.d1006.g${_commit:0:7}
 pkgver=${_basekernel}${_shortcommit}
 #pkgver=${_basekernel}.${_sub}
@@ -27,7 +27,8 @@ options=('!strip')
 source=(#"https://www.kernel.org/pub/linux/kernel/v5.x/linux-${_basekernel}.tar.xz"
         #"https://www.kernel.org/pub/linux/kernel/v5.x/patch-${pkgver}.xz"
         #https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux-stable-rc.git/snapshot/linux-stable-rc-$_commit.tar.gz
-        "linux-${pkgver}.tar.gz::https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/snapshot/linux-$_commit.tar.gz"
+        #"linux-${pkgver}.tar.gz::https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/snapshot/linux-$_commit.tar.gz"
+        "linux-${pkgver}.zip::https://codeload.github.com/torvalds/linux/zip/$_commit"
         # the main kernel config files
         'config.x86_64' 'config' 'config.aufs'
         "${pkgbase}.preset" # standard config files for mkinitcpio ramdisk
@@ -62,16 +63,16 @@ source=(#"https://www.kernel.org/pub/linux/kernel/v5.x/linux-${_basekernel}.tar.
         '0011-bootsplash.patch'
         '0012-bootsplash.patch'
         '0013-bootsplash.patch')
-sha256sums=('7054eb911a1069dea3f2e4217b9a0c06d5962dc6a7f143df0bd2eb6193e991ad'
+sha256sums=('edcc627d690bc7573144b702882fa916a609ce6c5b041503ae44f6a24ba51dc6'
             '5994b1b7700c605b936d241fcceefe1e4e4785c467c829c229a81ef24d298939'
             'f5903377d29fc538af98077b81982efdc091a8c628cb85566e88e1b5018f12bf'
             'b44d81446d8b53d5637287c30ae3eb64cae0078c3fbc45fcf1081dd6699818b5'
             '43942683a7ff01b180dff7f3de2db4885d43ab3d4e7bd0e1918c3aaf2ee061f4'
             'ae2e95db94ef7176207c690224169594d49445e04249d2499e9d2fbc117a0b21'
             '90831589b7ab43d6fab11bfa3ad788db14ba77ea4dc03d10ee29ad07194691e1'
-            '6446785f9a4ecfbe785984fab552fa1c79db54067d9b9a72339292db68e7585b'
+            '0470163b186b8a9e71bd96a0a29091c78a7551b6574363023ed462110d00831d'
             '7ff57fd146dc4c8f5fd37062e44cbf7e70164df5a684d3b4bb3e8a787c060503'
-            'a6476d1ffc5939efc551cf6c5bbf729a693837d26f527a48ff9325958642b374'
+            '92787f126e40069f7179e63f9949cc8848f595afbe89208bc9d6285ee76f590b'
             '16e981ac6beedd3bc264e03c1e8d25681d8ad9e5ad469e3630b3e2e6ba76e8ec'
             'a44fb19196c2e63e2733a210358afb309f598d8155488424a8620ec7f309de08'
             '1060cceb84a7d178d4a0e1946d06055ddab0b5b110d385e9d087557143c6659f'
@@ -142,7 +143,7 @@ prepare() {
 #  patch -Np1 -i "${srcdir}/aufs5-mmap.patch"
 #  patch -Np1 -i "${srcdir}/aufs5-standalone.patch"
 #  patch -Np1 -i "${srcdir}/tmpfs-idr.patch"
-#  patch -Np1 -i "${srcdir}/vfs-ino.patch"
+# patch -Np1 -i "${srcdir}/vfs-ino.patch"
 
   if [ "${CARCH}" = "x86_64" ]; then
     cat "${srcdir}/config.x86_64" > ./.config
@@ -150,7 +151,7 @@ prepare() {
     cat "${srcdir}/config" > ./.config
   fi
 
-  cat "${srcdir}/config.aufs" >> ./.config
+#  cat "${srcdir}/config.aufs" >> ./.config
 
   if [ "${_kernelname}" != "" ]; then
     sed -i "s|CONFIG_LOCALVERSION=.*|CONFIG_LOCALVERSION=\"${_kernelname}\"|g" ./.config
