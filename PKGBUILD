@@ -210,7 +210,7 @@ package_linux54() {
 
   # systemd expects to find the kernel here to allow hibernation
   # https://github.com/systemd/systemd/commit/edda44605f06a41fb86b7ab8128dcf99161d2344
-  ln -sr "/boot/vmlinuz-${_basekernel}-${CARCH}" "/usr/lib/modules/${_kernver}/vmlinuz"
+  ln -sr "/boot/vmlinuz-${_basekernel}-${CARCH}" "${pkgdir}/usr/lib/modules/${_kernver}/vmlinuz"
 
   # add kernel version
   if [ "${CARCH}" = "x86_64" ]; then
