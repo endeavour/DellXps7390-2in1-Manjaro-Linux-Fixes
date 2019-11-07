@@ -14,11 +14,11 @@ _basever=54
 _aufs=20191014
 _sub=0
 _rc=rc6
-_commit=a99d8080aaf358d5d23581244e5da23b35e340b9
-_shortcommit=${_rc}.d1103.g${_commit:0:7}
+_commit=26bc672134241a080a83b2ab9aa8abede8d30e1c
+_shortcommit=${_rc}.d1105.g${_commit:0:7}
 pkgver=${_basekernel}${_shortcommit}
 #pkgver=${_basekernel}.${_sub}
-pkgrel=1
+pkgrel=2
 arch=('i686' 'x86_64')
 url="http://www.kernel.org/"
 license=('GPL2')
@@ -31,9 +31,7 @@ source=(#"https://www.kernel.org/pub/linux/kernel/v5.x/linux-${_basekernel}.tar.
         "linux-${pkgver}.zip::https://codeload.github.com/torvalds/linux/zip/$_commit"
         # the main kernel config files
         'config.x86_64' 'config' 'config.aufs'
-        "${pkgbase}.preset" # standard config files for mkinitcpio ramdisk
-        '60-linux.hook'     # pacman hook for depmod
-        '90-linux.hook'     # pacman hook for initramfs regeneration
+        # AUFS Patches
         "aufs5.x-rcN-${_aufs}.patch"
         'aufs5-base.patch'
         'aufs5-kbuild.patch'
@@ -63,13 +61,10 @@ source=(#"https://www.kernel.org/pub/linux/kernel/v5.x/linux-${_basekernel}.tar.
         '0011-bootsplash.patch'
         '0012-bootsplash.patch'
         '0013-bootsplash.patch')
-sha256sums=('b664855ff9229d357dbd6cb24fbd38822e538eab58d9e97e3debad04fc2031bd'
+sha256sums=('218d6875812509ee7b35e2cfbabd48adf1e6c3bd1550f96e09c973db77fdd1ed'
             '120cd07da46f0b07a29a53cd7f9cae88ce3231f127b6254233461fa10366b77b'
             'f5903377d29fc538af98077b81982efdc091a8c628cb85566e88e1b5018f12bf'
             'b44d81446d8b53d5637287c30ae3eb64cae0078c3fbc45fcf1081dd6699818b5'
-            '43942683a7ff01b180dff7f3de2db4885d43ab3d4e7bd0e1918c3aaf2ee061f4'
-            'ae2e95db94ef7176207c690224169594d49445e04249d2499e9d2fbc117a0b21'
-            '90831589b7ab43d6fab11bfa3ad788db14ba77ea4dc03d10ee29ad07194691e1'
             '0470163b186b8a9e71bd96a0a29091c78a7551b6574363023ed462110d00831d'
             '7ff57fd146dc4c8f5fd37062e44cbf7e70164df5a684d3b4bb3e8a787c060503'
             '92787f126e40069f7179e63f9949cc8848f595afbe89208bc9d6285ee76f590b'
@@ -143,7 +138,7 @@ prepare() {
 #  patch -Np1 -i "${srcdir}/aufs5-mmap.patch"
 #  patch -Np1 -i "${srcdir}/aufs5-standalone.patch"
 #  patch -Np1 -i "${srcdir}/tmpfs-idr.patch"
-# patch -Np1 -i "${srcdir}/vfs-ino.patch"
+#  patch -Np1 -i "${srcdir}/vfs-ino.patch"
 
   if [ "${CARCH}" = "x86_64" ]; then
     cat "${srcdir}/config.x86_64" > ./.config
@@ -191,11 +186,9 @@ build() {
 
 package_linux54() {
   pkgdesc="The ${pkgbase/linux/Linux} kernel and modules"
-  depends=('coreutils' 'linux-firmware' 'kmod' 'mkinitcpio>=0.7')
+  depends=('coreutils' 'linux-firmware' 'kmod' 'mkinitcpio>=27')
   optdepends=('crda: to set the correct wireless channels of your country')
   provides=("linux=${pkgver}")
-  backup=("etc/mkinitcpio.d/${pkgbase}.preset")
-  install=${pkgname}.install
 
   cd "${srcdir}/linux-${_basekernel}"
 
@@ -206,11 +199,14 @@ package_linux54() {
 
   mkdir -p "${pkgdir}"/{boot,usr/lib/modules}
   make LOCALVERSION= INSTALL_MOD_PATH="${pkgdir}/usr" modules_install
-  cp arch/$KARCH/boot/bzImage "${pkgdir}/boot/vmlinuz-${_basekernel}-${CARCH}"
 
   # systemd expects to find the kernel here to allow hibernation
   # https://github.com/systemd/systemd/commit/edda44605f06a41fb86b7ab8128dcf99161d2344
-  ln -sr "/boot/vmlinuz-${_basekernel}-${CARCH}" "${pkgdir}/usr/lib/modules/${_kernver}/vmlinuz"
+  cp arch/$KARCH/boot/bzImage "${pkgdir}/usr/lib/modules/${_kernver}/vmlinuz"
+
+  # Used by mkinitcpio to name the kernel
+  echo "${pkgbase}" | install -Dm644 /dev/stdin "${pkgdir}/usr/lib/modules/${_kernver}/pkgbase"
+  echo "${_basekernel}-${CARCH}" | install -Dm644 /dev/stdin "${pkgdir}/usr/lib/modules/${_kernver}/kernelbase"
 
   # add kernel version
   if [ "${CARCH}" = "x86_64" ]; then
@@ -235,29 +231,6 @@ package_linux54() {
 
   # add vmlinux
   install -Dt "${pkgdir}/usr/lib/modules/${_kernver}/build" -m644 vmlinux
-
-  # sed expression for following substitutions
-  local _subst="
-    s|%PKGBASE%|${pkgbase}|g
-    s|%BASEKERNEL%|${_basekernel}|g
-    s|%ARCH%|${CARCH}|g
-    s|%KERNVER%|${_kernver}|g
-    s|%EXTRAMODULES%|${_extramodules}|g
-  "
-
-  # hack to allow specifying an initially nonexisting install file
-  sed "${_subst}" "${startdir}/${install}" > "${startdir}/${install}.pkg"
-  true && install=${install}.pkg
-
-  # install mkinitcpio preset file
-  sed "${_subst}" ${srcdir}/${pkgbase}.preset |
-    install -Dm644 /dev/stdin "${pkgdir}/etc/mkinitcpio.d/${pkgbase}.preset"
-
-  # install pacman hooks
-  sed "${_subst}" ${srcdir}/60-linux.hook |
-    install -Dm644 /dev/stdin "${pkgdir}/usr/share/libalpm/hooks/60-${pkgbase}.hook"
-  sed "${_subst}" ${srcdir}/90-linux.hook |
-    install -Dm644 /dev/stdin "${pkgdir}/usr/share/libalpm/hooks/90-${pkgbase}.hook"
 }
 
 package_linux54-headers() {
