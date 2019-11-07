@@ -28,16 +28,6 @@ and copy the intel files into ```/lib/firmware/intel``` on your local system (fi
 
 6. Reboot with new kernel.
 
-## Power management (Suspend issues)
-Thunderbolt causes suspend to hang the system (even if nothing is plugged in). This can be fixed by adding a script to disable thunderbolt before suspend and re-enable it afterwards.
-
-Copy ```scripts/custom-thunderbolt``` from this repository into ```/lib/systemd/system-sleep/custom-thunderbolt``` and make it executable:
-```
-cp scripts/custom-thunderbolt /lib/systemd/system-sleep/custom-thunderbolt
-chown root:root /lib/systemd/system-sleep/custom-thunderbolt
-chmod +x /lib/systemd/system-sleep/custom-thunderbolt
-```
-
 ## KDE Issues
 Inability to click/type into application launcher - switch to modesetting driver by running
 
