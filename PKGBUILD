@@ -61,7 +61,7 @@ source=(#"https://www.kernel.org/pub/linux/kernel/v5.x/linux-${_basekernel}.tar.
         '0011-bootsplash.patch'
         '0012-bootsplash.patch'
         '0013-bootsplash.patch'
-        # Dell XPS 7930 2-in-1 fixes
+        # Dell XPS 7390 2-in-1 fixes
         'dellxps-fixlpss.patch'
         'dellxps-suspend.patch'
         'dellxps-icelake-screencorruptionfix.patch')        
