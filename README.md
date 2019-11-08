@@ -1,8 +1,4 @@
-# Kernel 5.4
-This branch is experimental.
-
-Known issues:
-Wifi not working.
+# Kernel 5.4 rc6
 
 # Dell XPS 7390 2-in-1 Manjaro Linux Fixes
 
@@ -12,9 +8,13 @@ Usage:
 1. Install Manjaro on your system using ```noapic``` kernel parameter.
   - if can't find the hard drive, boot into BIOS and under `System Configuration` change `SATA Operation` from `RAID On` to `AHCI`. This will make your windows partitions (if any) unusable.
 
-2. Get latest linux firmware package from 
-```https://git.kernel.org/pub/scm/linux/kernel/git/firmware/linux-firmware.git/```
-and copy the intel files into ```/lib/firmware/intel``` on your local system (fixes bluetooth).
+2. Get latest linux firmware packages for wifi and bluetooth:
+```git clone https://chromium.googlesource.com/chromiumos/third_party/linux-firmware chromiumos-linux-firmware
+cd chromiumos-linux-firmware
+sudo cp iwlwifi-*  /lib/firmware/
+cd /lib/firmware
+sudo ln -s iwlwifi-Qu-c0-hr-b0-50.ucode iwlwifi-Qu-b0-hr-b0-50.ucode
+```
 
 3. Clone this repo
 
