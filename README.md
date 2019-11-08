@@ -25,7 +25,7 @@ and copy the intel files into ```/lib/firmware/intel``` on your local system (fi
 
 6. Install the packages:
 
-   ```sudo pacman -U ./linux53-5.3.0-0-x86_64.pkg.tar.xz ./mkinitcpio-27-1.2-any.pkg.tar.xz```
+   ```sudo pacman -U ./linux54-5.4rc6.d1105.g26bc672-2-x86_64.pkg.tar.xz ./mkinitcpio-27-1.2-any.pkg.tar.xz```
 
    (Change filenames as necessary)
 
