@@ -2,7 +2,7 @@
 This branch is experimental.
 
 Known issues:
-Wifi stops working after resuming from suspend.
+Wifi not working.
 
 # Dell XPS 7390 2-in-1 Manjaro Linux Fixes
 
@@ -20,9 +20,12 @@ and copy the intel files into ```/lib/firmware/intel``` on your local system (fi
 
 4. Run ```makepkg -s``` to build the kernel packages.
 
-5. Install the packages that were built:
+5. Grab latest mkinitcpio since this isn't availble in Manjaro stable repos yet (as of 8/Nov/2019):
+```wget https://www.mirrorservice.org/sites/repo.manjaro.org/repos/unstable/core/x86_64/mkinitcpio-27-1.2-any.pkg.tar.xz```
 
-   ```sudo pacman -U ./linux53-5.3.0-0-x86_64.pkg.tar.xz```
+6. Install the packages:
+
+   ```sudo pacman -U ./linux53-5.3.0-0-x86_64.pkg.tar.xz ./mkinitcpio-27-1.2-any.pkg.tar.xz```
 
    (Change filenames as necessary)
 
