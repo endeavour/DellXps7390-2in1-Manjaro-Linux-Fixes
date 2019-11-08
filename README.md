@@ -9,7 +9,8 @@ Usage:
   - if can't find the hard drive, boot into BIOS and under `System Configuration` change `SATA Operation` from `RAID On` to `AHCI`. This will make your windows partitions (if any) unusable.
 
 2. Get latest linux firmware packages for wifi and bluetooth:
-```git clone https://chromium.googlesource.com/chromiumos/third_party/linux-firmware chromiumos-linux-firmware
+```
+git clone https://chromium.googlesource.com/chromiumos/third_party/linux-firmware chromiumos-linux-firmware
 cd chromiumos-linux-firmware
 sudo cp iwlwifi-*  /lib/firmware/
 cd /lib/firmware
