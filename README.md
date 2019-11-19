@@ -1,4 +1,4 @@
-# Kernel 5.4 rc6
+# Kernel 5.4 rc7
 
 # Dell XPS 7390 2-in-1 Manjaro Linux Fixes
 
