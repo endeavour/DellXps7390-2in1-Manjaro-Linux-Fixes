@@ -1,3 +1,6 @@
+# IMPORTANT: THIS REPO IS NO LONGER REQUIRED :)
+All of the patches that were included here are now in the linux kernel mainline (as of kernel 5.4.8) so these fixes are no longer needed. Everything should work out of the box with kernel 5.4.8 with the exception of the webcam.
+
 # Kernel 5.4 rc7
 
 # Dell XPS 7390 2-in-1 Manjaro Linux Fixes
